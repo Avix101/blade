@@ -1,0 +1,13 @@
+#viewport {
+  display: block;
+  margin: auto;
+  border: 2px solid black;
+}
+
+body, html {
+  margin: 0px;
+}
+
+.hidden {
+  display: none;
+}
