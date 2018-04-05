@@ -37,24 +37,33 @@ const draw = () => {
   }
   
   const time = new Date().getTime();
-  for(let i = 0; i < cards.length; i++){
-    const card = cards[i];
-    card.update(time);
-    
-    const image = cardImageStruct[card.name];
-    
-    prepCtx.save();
-    prepCtx.translate(card.x + (card.width / 2), card.y + (card.height / 2));
-    prepCtx.rotate(card.radians);
-    prepCtx.drawImage(
-      image,
-      -card.width / 2,
-      -card.height / 2,
-      card.width,
-      card.height,
-    );
-    prepCtx.restore();
+  const subDeckKeys = Object.keys(deck);
+  for(let i = 0; i < subDeckKeys.length; i++){
+    const subDeck = deck[subDeckKeys[i]];
+    for(let j = 0; j < subDeck.length; j++){
+      const card = subDeck[j];;
+      card.update(time);
+      
+      let image = cardImageStruct[card.name];
+      
+      if(!card.isRevealed()){
+        image = cardImageStruct["back"];
+      }
+      
+      prepCtx.save();
+      prepCtx.translate(card.x + (card.width / 2), card.y + (card.height / 2));
+      prepCtx.rotate(card.radians);
+      
+      prepCtx.drawImage(
+        image,
+        -card.width / 2,
+        -card.height / 2,
+        card.width,
+        card.height,
+      );
+      prepCtx.restore();
+    }
   }
-    
+  
   displayFrame();
 }

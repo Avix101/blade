@@ -1,7 +1,7 @@
 class Animation {
   constructor(logistics){
-    const time = new Date().getTime();
-    this.startTime = time;
+    const time = 0;
+    this.startTime = 0;
     this.currentTime = time;
     this.begin = logistics.begin;
     this.timeToFinish = logistics.timeToFinish;
@@ -16,6 +16,11 @@ class Animation {
       this.propsCurrent[key] = this.propsBegin[key];
     }
   };
+  
+  bind(currentTime){
+    this.startTime = currentTime;
+    this.currentTime - currentTime;
+  }
   
   update(currentTime){
     const timeElapsed = currentTime - this.currentTime;

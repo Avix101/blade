@@ -8,8 +8,8 @@ var Animation = function () {
   function Animation(logistics) {
     _classCallCheck(this, Animation);
 
-    var time = new Date().getTime();
-    this.startTime = time;
+    var time = 0;
+    this.startTime = 0;
     this.currentTime = time;
     this.begin = logistics.begin;
     this.timeToFinish = logistics.timeToFinish;
@@ -26,6 +26,12 @@ var Animation = function () {
   }
 
   _createClass(Animation, [{
+    key: "bind",
+    value: function bind(currentTime) {
+      this.startTime = currentTime;
+      this.currentTime - currentTime;
+    }
+  }, {
     key: "update",
     value: function update(currentTime) {
       var timeElapsed = currentTime - this.currentTime;
@@ -84,7 +90,9 @@ var Card = function () {
     this.width = size.width * 0.6;
     this.height = size.height * 0.6;
     this.radians = 0;
+    this.revealed = false;
     this.animation = null;
+    //this.queuedAnimations = [];
     this.animCallback = null;
   }
 
@@ -92,12 +100,42 @@ var Card = function () {
     key: "bindAnimation",
     value: function bindAnimation(animation, callback) {
       this.animation = animation;
+      this.animation.bind(new Date().getTime());
 
       if (callback) {
         this.animCallback = callback;
       } else {
         this.animCallback = null;
       }
+    }
+  }, {
+    key: "isRevealed",
+
+
+    /*queueAnimation(animation, params, callback){
+      this.queuedAnimations.push({animation, callback});
+    };
+    
+    nextAnimation(){
+      if (this.queuedAnimations.length > 0){
+        const queued = this.queuedAnimations[0];
+        const animation = queued.animation.apply(this, queued.params);
+        this.bindAnimation(animation, queued.callback);
+        this.queuedAnimations.splice(0, 1);
+      }
+    };
+    
+    clearQueue(){
+      this.queuedAnimations = [];
+    };*/
+
+    value: function isRevealed() {
+      return this.revealed;
+    }
+  }, {
+    key: "flip",
+    value: function flip() {
+      this.revealed = !this.revealed;
     }
   }, {
     key: "cancelAnimation",
@@ -110,8 +148,7 @@ var Card = function () {
     value: function endAnimation() {
       this.cancelAnimation();
       if (this.animCallback) {
-        this.animCallback();
-        this.animCallback = null;
+        this.animCallback(this);
       }
     }
   }, {
@@ -166,17 +203,26 @@ var draw = function draw() {
   }
 
   var time = new Date().getTime();
-  for (var i = 0; i < cards.length; i++) {
-    var card = cards[i];
-    card.update(time);
+  var subDeckKeys = Object.keys(deck);
+  for (var i = 0; i < subDeckKeys.length; i++) {
+    var subDeck = deck[subDeckKeys[i]];
+    for (var j = 0; j < subDeck.length; j++) {
+      var card = subDeck[j];;
+      card.update(time);
 
-    var image = cardImageStruct[card.name];
+      var image = cardImageStruct[card.name];
 
-    prepCtx.save();
-    prepCtx.translate(card.x + card.width / 2, card.y + card.height / 2);
-    prepCtx.rotate(card.radians);
-    prepCtx.drawImage(image, -card.width / 2, -card.height / 2, card.width, card.height);
-    prepCtx.restore();
+      if (!card.isRevealed()) {
+        image = cardImageStruct["back"];
+      }
+
+      prepCtx.save();
+      prepCtx.translate(card.x + card.width / 2, card.y + card.height / 2);
+      prepCtx.rotate(card.radians);
+
+      prepCtx.drawImage(image, -card.width / 2, -card.height / 2, card.width, card.height);
+      prepCtx.restore();
+    }
   }
 
   displayFrame();
@@ -190,8 +236,10 @@ var viewport = void 0,
 var socket = void 0,
     hash = void 0;
 var bladeMat = void 0;
+var cardsLoaded = 0;
 var animationFrame = void 0;
-var cards = [];
+var deck = {};
+var NULL_FUNC = function NULL_FUNC() {};
 
 var aspectRatio = 16 / 9;
 
@@ -219,17 +267,21 @@ var init = function init() {
   //Grab static images included in client download
   bladeMat = document.querySelector("#bladeMat");
 
-  //Connect to the server via sockets
-  socket = io.connect();
-
   //Construct the prep canvas (for building frames)
   prepCanvas = document.createElement('canvas');
   prepCanvas.width = "1920";
   prepCanvas.height = "1080";
   prepCtx = prepCanvas.getContext('2d');
 
+  //Connect to the server via sockets
+  socket = io.connect();
+
+  //Attach custom socket events
+  socket.on('loadBladeCards', loadBladeCards);
+  socket.on('setDeck', setDeck);
+
   //Eventually switch to server call to load cards
-  loadBladeCards([{ name: "back", src: "/assets/img/cards/00 Back.png" }]);
+  //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
 
   animationFrame = requestAnimationFrame(update);
 };
@@ -248,36 +300,78 @@ var update = function update() {
   animationFrame = requestAnimationFrame(update);
 };
 
-//REMOVE -- TESTING ONLY
-var flushedCards = false;
+var animateDeckWhenReady = function animateDeckWhenReady(cardCollection, callback) {
+  for (var i = 0; i < cardCollection.length; i++) {
+    var card = cardCollection[i];
+    if (!card.readyToAnimate()) {
+      return;
+    }
+  }
 
-var updateCards = function updateCards() {
-  if (!flushedCards && cards[9].readyToAnimate()) {
-    flushCards(cards, 770, true);
-    flushedCards = true;
+  if (callback) {
+    callback();
   }
 };
 
-var loadBladeCards = function loadBladeCards(cardImages) {
+var chainAnimations = function chainAnimations(cardCollection, animationPackages) {
+
+  animationPackages.reverse();
+  var animations = animationPackages.map(function (pack) {
+    return pack[0];
+  });
+  var params = animationPackages.map(function (pack) {
+    return pack[1];
+  });
+  var animateTogether = animationPackages.map(function (pack) {
+    return pack[2];
+  });
+
+  var funcChain = [NULL_FUNC];
+
   var _loop = function _loop(i) {
+    var animationFuncs = animations[i];
+    var paramList = params[i];
+
+    var funcWrapper = function funcWrapper(card) {
+
+      if (animateTogether[i]) {
+        animateDeckWhenReady(cardCollection, function () {
+          var anims = animationFuncs.apply(null, [cardCollection].concat(paramList));
+          for (var j = 0; j < cardCollection.length; j++) {
+            var _card = cardCollection[j];
+            _card.bindAnimation(anims[j], funcChain[i]);
+          }
+        });
+      } else {
+        var anims = animationFuncs.apply(null, [cardCollection].concat(paramList));
+        for (var j = 0; j < cardCollection.length; j++) {
+          var _card2 = cardCollection[j];
+          _card2.bindAnimation(anims[j], funcChain[i]);
+        }
+      }
+    };
+    funcChain.push(funcWrapper);
+  };
+
+  for (var i = 0; i < animations.length; i++) {
+    _loop(i);
+  }
+
+  funcChain[funcChain.length - 1]();
+};
+
+var loadBladeCards = function loadBladeCards(cardImages) {
+  var _loop2 = function _loop2(i) {
     var cardImage = cardImages[i];
     var image = new Image();
 
     image.onload = function () {
       cardImageStruct[cardImage.name] = image;
 
-      for (var _i = 0; _i < 10; _i++) {
-        var card = new Card(cardImage.name, { x: -100, y: 800 }, { width: image.width, height: image.height });
-        var moveAnim = new Animation({
-          begin: 100 * _i,
-          timeToFinish: 400,
-          propsBegin: { x: -100 },
-          propsEnd: { x: 300 }
-        });
-        card.bindAnimation(moveAnim, function () {
-          updateCards();
-        });
-        cards.push(card);
+      cardsLoaded++;
+
+      if (cardsLoaded >= cardImages.length) {
+        socket.emit('requestDeck');
       }
     };
 
@@ -285,15 +379,134 @@ var loadBladeCards = function loadBladeCards(cardImages) {
   };
 
   for (var i = 0; i < cardImages.length; i++) {
-    _loop(i);
+    _loop2(i);
   }
 };
 
-var flushCards = function flushCards(cardCollection, baseLineY, curveDown) {
+var setDeck = function setDeck(data) {
 
+  var subDeckKeys = Object.keys(data);
+  for (var i = 0; i < subDeckKeys.length; i++) {
+    var key = subDeckKeys[i];
+    deck[key] = [];
+    for (var j = 0; j < data[key].length; j++) {
+      var cardData = data[key][j];
+      var card = void 0;
+
+      if (cardData) {
+        var _image = cardImageStruct[cardData.ref];
+        card = new Card(cardData.ref, { x: -200, y: -200 }, { width: _image.width, height: _image.height });
+      } else {
+        var _image2 = cardImageStruct["back"];
+        card = new Card("back", { x: -200, y: -200 }, { width: _image2.width, height: _image2.height });
+      }
+
+      deck[key].push(card);
+    }
+  }
+
+  //moveToPlayerDeck(deck.player1);
+  //NOTE: Replace with more consistent value!
+  var width = deck.player1[0].width;
+
+  /*chainAnimations(deck.player1, [
+    [moveToPlayerDeck, [], true],
+    [flushCards, [770, true], true],
+    [startCardFlip, [], true],
+    [endCardFlip, [width], false]
+  ]);*/
+  moveToPlayerDeck(deck.player1, function () {
+    flushCards(deck.player1, 770, true, function () {
+      startCardFlip(deck.player1, false, function () {
+        foldInCards(deck.player1, function () {
+          startCardFlip(deck.player1, true, function () {
+            startCardFlip(deck.player1, false, function () {
+              flushCards(deck.player1, 770, true);
+            });
+          });
+        });
+      });
+    });
+  });
+
+  //flushCards(deck.player1, 770, true);
+};
+
+var moveToPlayerDeck = function moveToPlayerDeck(cardCollection, callback) {
+  //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
     var card = cardCollection[i];
-    var x = 500 + 100 * (cardCollection.length - 1 - i);
+    var moveAnim = new Animation({
+      begin: 100 * i,
+      timeToFinish: 400,
+      propsBegin: { x: -100, y: 770 },
+      propsEnd: { x: 300, y: 770 }
+    });
+    card.bindAnimation(moveAnim, function () {
+      animateDeckWhenReady(cardCollection, function () {
+        //cardCollection.reverse();
+        if (callback) {
+          callback();
+        }
+      });
+      //animateDeckWhenReady(cardCollection, () => {
+      //flushCards(cardCollection, 770, true);
+      //});
+    });
+    //anims.push(moveAnim);
+  }
+  //return anims;
+};
+
+var startCardFlip = function startCardFlip(cardCollection, reverse, callback) {
+  var _loop3 = function _loop3(i) {
+    var card = cardCollection[i];
+    var flipAnimation = new Animation({
+      begin: reverse ? i * 50 : (cardCollection.length - 1 - i) * 50,
+      timeToFinish: 200,
+      propsBegin: { width: card.width },
+      propsEnd: { width: 0 }
+    });
+    var width = card.width;
+    card.bindAnimation(flipAnimation, function () {
+      card.flip();
+      endCardFlip(card, cardCollection, width, callback);
+    });
+
+    //anims.push(flipAnimation);
+  };
+
+  //const anims = [];
+  for (var i = 0; i < cardCollection.length; i++) {
+    _loop3(i);
+  }
+
+  //return anims;
+};
+
+var endCardFlip = function endCardFlip(card, cardCollection, width, callback) {
+  //const anims = [];
+  //for(let i = 0; i < cardCollection.length; i++){
+  //const card = cardCollection[i];
+  var flipAnimation = new Animation({
+    begin: 0,
+    timeToFinish: 200,
+    propsBegin: { width: 0 },
+    propsEnd: { width: width }
+  });
+  card.bindAnimation(flipAnimation, function () {
+    animateDeckWhenReady(cardCollection, callback);
+  });
+  //anims.push(flipAnimation);
+  //}
+  //return anims;
+};
+
+var flushCards = function flushCards(cardCollection, baseLineY, curveDown, callback) {
+  //const anims = [];
+  for (var i = 0; i < cardCollection.length; i++) {
+    var _card3 = cardCollection[i];
+    var x = 1100 + 100 * (cardCollection.length / 2 - 1 - i);
 
     var middle = cardCollection.length / 2;
     var distanceFromMiddle = middle - i - 1;
@@ -310,13 +523,38 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown) {
     var flushAnim = new Animation({
       begin: (cardCollection.length - 1 - i) * 200,
       timeToFinish: 600 + (cardCollection.length - 1 - i) * 100,
-      propsBegin: { x: card.x, y: card.y, radians: card.radians },
+      propsBegin: { x: _card3.x, y: _card3.y, radians: _card3.radians },
       propsEnd: { x: x, y: y, radians: radians }
     });
-    card.bindAnimation(flushAnim);
+
+    //anims.push(flushAnim);
+    _card3.bindAnimation(flushAnim, function () {
+      animateDeckWhenReady(cardCollection, callback);
+      //animateDeckWhenReady(cardCollection, () => {
+      //startCardFlip(cardCollection);
+      //});
+    });
   }
 
-  cards.reverse();
+  cardCollection.reverse();
+  //return anims;
+};
+
+var foldInCards = function foldInCards(cardCollection, callback) {
+  for (var i = 0; i < cardCollection.length; i++) {
+    var _card4 = cardCollection[i];
+
+    var foldInAnim = new Animation({
+      begin: 0,
+      timeToFinish: 300,
+      propsBegin: { x: _card4.x, y: _card4.y, radians: _card4.radians },
+      propsEnd: { x: 1100, y: 770, radians: 0 }
+    });
+
+    _card4.bindAnimation(foldInAnim, function () {
+      animateDeckWhenReady(cardCollection, callback);
+    });
+  }
 };
 "use strict";
 

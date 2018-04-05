@@ -1,8 +1,10 @@
 let viewport, viewCtx, prepCanvas, prepCtx;
 let socket, hash;
 let bladeMat;
+let cardsLoaded = 0;
 let animationFrame;
-let cards = [];
+let deck = {};
+const NULL_FUNC = () => {};
 
 const aspectRatio = 16 / 9;
 
@@ -30,17 +32,21 @@ const init = () => {
   //Grab static images included in client download
   bladeMat = document.querySelector("#bladeMat");
   
-  //Connect to the server via sockets
-  socket = io.connect();
-  
   //Construct the prep canvas (for building frames)
   prepCanvas = document.createElement('canvas');
   prepCanvas.width = "1920";
   prepCanvas.height = "1080";
   prepCtx = prepCanvas.getContext('2d');
   
+  //Connect to the server via sockets
+  socket = io.connect();
+  
+  //Attach custom socket events
+  socket.on('loadBladeCards', loadBladeCards);
+  socket.on('setDeck', setDeck);
+  
   //Eventually switch to server call to load cards
-  loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
+  //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
   
   animationFrame = requestAnimationFrame(update);
 };
