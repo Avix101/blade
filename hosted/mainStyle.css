@@ -11,3 +11,16 @@ body, html {
 .hidden {
   display: none;
 }
+
+#roomSelect {
+  margin: auto;
+  text-align: center;
+}
+
+.row-centered {
+  align-content: center;
+}
+
+.formSubmit {
+ width: 100%; 
+}

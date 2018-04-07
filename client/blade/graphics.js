@@ -27,6 +27,32 @@ const displayFrame = () => {
   );
 };
 
+const drawCard = (card) => {
+  let image = cardImageStruct[card.name];
+      
+  if(!card.isRevealed()){
+    image = cardImageStruct["back"];
+  }
+  
+  prepCtx.save();
+  
+  if(card === selectedCard){
+    prepCtx.filter = `hue-rotate(${card.hueRotate}deg)`;
+  }
+  
+  prepCtx.translate(card.x + (card.width / 2), card.y + (card.height / 2));
+  prepCtx.rotate(card.radians);
+  
+  prepCtx.drawImage(
+    image,
+    -card.width / 2,
+    -card.height / 2,
+    card.width,
+    card.height,
+  );
+  prepCtx.restore();
+};
+
 const draw = () => {
   clearCanvas(prepCanvas, prepCtx);
   
@@ -43,25 +69,17 @@ const draw = () => {
     for(let j = 0; j < subDeck.length; j++){
       const card = subDeck[j];;
       card.update(time);
-      
-      let image = cardImageStruct[card.name];
-      
-      if(!card.isRevealed()){
-        image = cardImageStruct["back"];
-      }
-      
-      prepCtx.save();
-      prepCtx.translate(card.x + (card.width / 2), card.y + (card.height / 2));
-      prepCtx.rotate(card.radians);
-      
-      prepCtx.drawImage(
-        image,
-        -card.width / 2,
-        -card.height / 2,
-        card.width,
-        card.height,
-      );
-      prepCtx.restore();
+      drawCard(card);
+    }
+  }
+  
+  const fieldKeys = Object.keys(fields);
+  for(let i = 0; i < fieldKeys.length; i++){
+    const field = fields[fieldKeys[i]];
+    for(let j = 0; j < field.length; j++){
+      const card = field[j];
+      card.update(time);
+      drawCard(card);
     }
   }
   

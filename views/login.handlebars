@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sen No Kiseki's Blade</title>
+  
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@15/dist/react.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@15/dist/react-dom.min.js"></script>
+  <script crossorigin src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+  
+  <!-- Additional utilities -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/remarkable/1.6.2/remarkable.min.js"></script>
+  
+  <!-- Boostrap, and custom styles -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  <link rel="stylesheet" type="text/css" href="/assets/bootstrap-cerulean.min.css" />
+  <link rel="stylesheet" type="text/css" href="/assets/mainStyle.css" />
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <a href="/login">
+      <img id="logo" width="64px" height="64px" src="/assets/img/icon.jpg" alt="Site Logo" />
+    </a>
+    <a href="/login" class="navbar-brand">Sen No Kiseki's Blade</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <a id="loginButton" class="nav-link" href="/login">Login</a>
+        </li>
+        <li class="nav-item">
+          <a id="signupButton" class="nav-link" href="/signup">Sign Up</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  
+  <div id="errorMessage"></div>
+  
+  <div class="container">
+    <div class="row row-centered">
+      <div class="col-lg-4 col-centered"></div>
+      <div id="main" class="col-lg-4"></div>
+      <div class="col-lg-4 col-centered"></div>
+    </div>
+  </div>
+  <script src="/assets/loginBundle.js"></script>
+</body>
+</html>

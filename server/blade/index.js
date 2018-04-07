@@ -9,6 +9,8 @@ const games = {};
 const gameExists = roomId => games[roomId] !== undefined;
 const getGame = roomId => games[roomId];
 
+const numCardsPerPlayer = 10;
+
 const getDeck = (roomId, deckType) => {
   const game = getGame(roomId);
   const deck = {
@@ -22,6 +24,9 @@ const getDeck = (roomId, deckType) => {
     case 'player1':
       deck.player1 = game.getPlayer1Cards(false);
       break;
+    case 'player2':
+      deck.player2 = game.getPlayer2Cards(false);
+      break;
     default:
       break;
   }
@@ -29,7 +34,35 @@ const getDeck = (roomId, deckType) => {
   return deck;
 };
 
-const numCardsPerPlayer = 10;
+const getSingleCardSet = (roomId, type) => {
+  const game = getGame(roomId);
+  switch (type) {
+    case 'player1':
+      return game.getPlayer1Cards(false);
+    case 'player2':
+      return game.getPlayer2Cards(false);
+    default:
+      return [];
+  }
+};
+
+const sortDeck = (roomId, deckType, callback) => {
+  const game = getGame(roomId);
+  switch (deckType) {
+    case 'player1':
+      game.sortDeck(game.getPlayer1Cards(false));
+      break;
+    case 'player2':
+      game.sortDeck(game.getPlayer2Cards(false));
+      break;
+    default:
+      break;
+  }
+
+  if (callback) {
+    callback();
+  }
+};
 
 const getCardImages = () => {
   const cardImages = [];
@@ -61,10 +94,30 @@ const beginGame = (roomId, callback) => {
   callback();
 };
 
+const validateCard = (roomId, status, index) => {
+  const deck = getSingleCardSet(roomId, status);
+  if (index >= 0 && index < deck.length) {
+    return true;
+  }
+  return false;
+};
+
+const playCard = (roomId, status, index, callback) => {
+  const game = getGame(roomId);
+  const deck = getSingleCardSet(roomId, status);
+  const card = deck[index];
+  game.player1Field.push(card);
+  deck.splice(index, 1);
+  callback(status);
+};
+
 module.exports = {
   getCardImages,
   beginGame,
   gameExists,
   getGame,
   getDeck,
+  sortDeck,
+  validateCard,
+  playCard,
 };

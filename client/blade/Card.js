@@ -1,6 +1,7 @@
 class Card {
-  constructor(name, location, size){
+  constructor(name, sortValue, location, size){
     this.name = name;
+    this.sortValue = sortValue;
     this.x = location.x;
     this.y = location.y;
     this.width = size.width * 0.6;
@@ -8,6 +9,8 @@ class Card {
     this.radians = 0;
     this.revealed = false;
     this.animation = null;
+    this.hueRotate = 0;
+    this.originalLocation = location;
     //this.queuedAnimations = [];
     this.animCallback = null;
   };

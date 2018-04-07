@@ -4,7 +4,12 @@ let bladeMat;
 let cardsLoaded = 0;
 let animationFrame;
 let deck = {};
+let fields = {};
 const NULL_FUNC = () => {};
+let readyToPlay = false;
+let selectedCard = null;
+let mousePos = {x: 0, y: 0};
+let playerStatus;
 
 const aspectRatio = 16 / 9;
 
@@ -43,7 +48,11 @@ const init = () => {
   
   //Attach custom socket events
   socket.on('loadBladeCards', loadBladeCards);
+  socket.on('roomOptions', roomOptions);
+  socket.on('roomJoined', roomJoined);
   socket.on('setDeck', setDeck);
+  socket.on('sortDeck', sortDeck);
+  socket.on('playCard', playCard);
   
   //Eventually switch to server call to load cards
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);

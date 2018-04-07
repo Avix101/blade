@@ -12,6 +12,8 @@ class Game {
     this.player2Cards = [];
     this.player1Deck = [];
     this.player2Deck = [];
+    this.player1Field = [];
+    this.player2Field = [];
   }
 
   allocateCards(numPerPlayer) {
@@ -55,6 +57,10 @@ class Game {
 
   getPlayer2Deck(obfuscate) {
     return processArray(this.player2Deck, obfuscate);
+  }
+
+  static sortDeck(cardCollection) {
+    return cardCollection.sort((cardA, cardB) => cardB.sortValue - cardA.sortValue);
   }
 }
 
