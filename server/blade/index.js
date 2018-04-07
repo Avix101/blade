@@ -50,10 +50,10 @@ const sortDeck = (roomId, deckType, callback) => {
   const game = getGame(roomId);
   switch (deckType) {
     case 'player1':
-      game.sortDeck(game.getPlayer1Cards(false));
+      Game.sortDeck(game.getPlayer1Cards(false));
       break;
     case 'player2':
-      game.sortDeck(game.getPlayer2Cards(false));
+      Game.sortDeck(game.getPlayer2Cards(false));
       break;
     default:
       break;
