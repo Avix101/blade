@@ -7,7 +7,8 @@ const update = () => {
 };
 
 const processClick = (e) => {
-  if(selectedCard){
+  if(selectedCard && !gameState.winner){
+    unselectCard(selectedCard);
     switch(gameState.turnType){
       case "pickFromDeck":
         socket.emit('pickFromDeck');
@@ -17,6 +18,7 @@ const processClick = (e) => {
         const playerHand = getPlayerHand();
         socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
         selectedCard = null;
+        updateReadyStatus(false);
         break;
       default:
         break;
@@ -64,7 +66,7 @@ const rotatePoint = (point, anchor, radians) => {
 };
 
 const checkCardCollisions = () => {
-  if(!readyToPlay){
+  if(!readyToPlay || gameState.winner !== null){
     return;
   }
   
@@ -450,6 +452,8 @@ const updateGamestate = (data) => {
   if(gameState.clearFields === true){
     clearFields();
   }
+  
+  updateReadyStatus(false);
 }
 
 const clearFields = () => {
@@ -460,7 +464,7 @@ const clearFields = () => {
     const moveAnim = new Animation(
       {
         begin: 0,
-        timeToFinish: 300,
+        timeToFinish: 600,
         propsBegin: {x: card.x},
         propsEnd: {x: prepCanvas.width + 100},
       }, true
@@ -479,7 +483,7 @@ const clearFields = () => {
     const moveAnim = new Animation(
       {
         begin: 0,
-        timeToFinish: 300,
+        timeToFinish: 600,
         propsBegin: {x: card.x},
         propsEnd: {x: -100},
       }, true

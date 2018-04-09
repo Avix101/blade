@@ -7,6 +7,22 @@ const roomHandler = require('./roomHandler.js');
 
 let io;
 
+const verifyGameIntegrity = roomId => blade.gameExists(roomId);
+
+const verifyDataIntegrity = (data, expectedKeys) => {
+  let verified = true;
+
+  if (!data) {
+    return false;
+  }
+
+  for (let i = 0; i < expectedKeys.length; i++) {
+    const key = expectedKeys[i];
+    verified = data[key] !== undefined;
+  }
+  return verified;
+};
+
 const init = (ioInstance) => {
   io = ioInstance;
 
@@ -57,12 +73,24 @@ const init = (ioInstance) => {
     });
 
     socket.on('ready', (data) => {
+      if (!verifyGameIntegrity(socket.roomJoined)) {
+        return;
+      }
+
+      if (!verifyDataIntegrity(data, ['status'])) {
+        return;
+      }
+
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       const ready = data.status === true;
       blade.playerReady(socket.roomJoined, status, ready);
     });
 
     socket.on('requestDeck', () => {
+      if (!verifyGameIntegrity(socket.roomJoined)) {
+        return;
+      }
+
       blade.beginGame('lobby', () => {
         io.sockets.in(socket.roomJoined).emit(
           'setDeck',
@@ -72,6 +100,10 @@ const init = (ioInstance) => {
     });
 
     socket.on('sortDeck', () => {
+      if (!verifyGameIntegrity(socket.roomJoined)) {
+        return;
+      }
+
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       blade.sortDeck(socket.roomJoined, status, () => {
         socket.emit('sortDeck');
@@ -79,16 +111,25 @@ const init = (ioInstance) => {
     });
 
     socket.on('pickFromDeck', () => {
+      if (!verifyGameIntegrity(socket.roomJoined)) {
+        return;
+      }
+
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       blade.pickFromDeck(socket.roomJoined, status, (card) => {
         io.sockets.in(socket.roomJoined).emit('pickFromDeck', { player: status, card });
-
-        const gameState = blade.getGameState(socket.roomJoined);
-        io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
       });
     });
 
     socket.on('playCard', (data) => {
+      if (!verifyGameIntegrity(socket.roomJoined)) {
+        return;
+      }
+
+      if (!verifyDataIntegrity(data, ['index'])) {
+        return;
+      }
+
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       if (blade.validateCard(socket.roomJoined, status, data.index)) {
         blade.playCard(socket.roomJoined, status, data.index, (cardSet, name) => {
@@ -97,19 +138,19 @@ const init = (ioInstance) => {
             'playCard',
             { index: data.index, cardSet, name },
           );
-
-          const gameState = blade.getGameState(socket.roomJoined);
-          io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
         });
       }
-    });
-
-    socket.on('message', (data) => {
-      socket.emit('message', data);
     });
   });
 };
 
-module.exports = {
-  init,
+const sendGameState = (roomId, callback) => {
+  const gameState = blade.getGameState(roomId);
+  io.sockets.in(roomId).emit('gamestate', gameState);
+  if (callback) {
+    callback();
+  }
 };
+
+module.exports.init = init;
+module.exports.sendGameState = sendGameState;

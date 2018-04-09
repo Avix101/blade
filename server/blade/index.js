@@ -92,7 +92,7 @@ const beginGame = (roomId, callback) => {
     }
   }
 
-  games[roomId] = new Game(deck);
+  games[roomId] = new Game(roomId, deck);
   const game = getGame(roomId);
   game.allocateCards(numCardsPerPlayer);
   // game.pickStartingPlayer();

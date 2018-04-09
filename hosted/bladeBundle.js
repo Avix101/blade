@@ -282,6 +282,31 @@ var drawTurnIndicator = function drawTurnIndicator() {
   }
 };
 
+var drawGameResult = function drawGameResult() {
+  prepCtx.save();
+  prepCtx.globalAlpha = 0.7;
+  prepCtx.fillStyle = "black";
+  prepCtx.fillRect(0, 0, prepCanvas.width, prepCanvas.height);
+
+  prepCtx.globalAlpha = 1;
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+
+  if (playerStatus === gameState.winner) {
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("You won!", prepCanvas.width / 2, prepCanvas.height / 2);
+  } else if (gameState.winner === "tie") {
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("You tied!", prepCanvas.width / 2, prepCanvas.height / 2);
+  } else {
+    prepCtx.fillStyle = "red";
+    prepCtx.fillText("You Lost!", prepCanvas.width / 2, prepCanvas.height / 2);
+  }
+
+  prepCtx.restore();
+};
+
 var draw = function draw() {
   clearCanvas(prepCanvas, prepCtx);
 
@@ -323,7 +348,12 @@ var draw = function draw() {
   updateReadyStatus(readyStatus);
 
   drawScore(getPlayerPoints(), getOpponentPoints());
-  drawTurnIndicator();
+
+  if (gameState.winner) {
+    drawGameResult();
+  } else {
+    drawTurnIndicator();
+  }
 
   displayFrame();
 };
@@ -349,7 +379,8 @@ var gameState = {
   turnType: "pickFromDeck",
   turnOwner: null,
   player1Points: 0,
-  player2Points: 0
+  player2Points: 0,
+  winner: null
 };
 
 var fields = {
@@ -424,7 +455,8 @@ var update = function update() {
 };
 
 var processClick = function processClick(e) {
-  if (selectedCard) {
+  if (selectedCard && !gameState.winner) {
+    unselectCard(selectedCard);
     switch (gameState.turnType) {
       case "pickFromDeck":
         socket.emit('pickFromDeck');
@@ -434,6 +466,7 @@ var processClick = function processClick(e) {
         var playerHand = getPlayerHand();
         socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
         selectedCard = null;
+        updateReadyStatus(false);
         break;
       default:
         break;
@@ -481,7 +514,7 @@ var rotatePoint = function rotatePoint(point, anchor, radians) {
 };
 
 var checkCardCollisions = function checkCardCollisions() {
-  if (!readyToPlay) {
+  if (!readyToPlay || gameState.winner !== null) {
     return;
   }
 
@@ -859,6 +892,8 @@ var updateGamestate = function updateGamestate(data) {
   if (gameState.clearFields === true) {
     clearFields();
   }
+
+  updateReadyStatus(false);
 };
 
 var clearFields = function clearFields() {
@@ -868,7 +903,7 @@ var clearFields = function clearFields() {
     var card = playerField[i];
     var moveAnim = new Animation({
       begin: 0,
-      timeToFinish: 300,
+      timeToFinish: 600,
       propsBegin: { x: card.x },
       propsEnd: { x: prepCanvas.width + 100 }
     }, true);
@@ -885,7 +920,7 @@ var clearFields = function clearFields() {
     var _card4 = opponentField[_i];
     var _moveAnim = new Animation({
       begin: 0,
-      timeToFinish: 300,
+      timeToFinish: 600,
       propsBegin: { x: _card4.x },
       propsEnd: { x: -100 }
     }, true);

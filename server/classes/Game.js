@@ -1,3 +1,5 @@
+const socketHandler = require('./../socketHandler.js');
+
 const processArray = (array, obfuscate) => {
   if (obfuscate) {
     return array.map(() => undefined);
@@ -6,7 +8,8 @@ const processArray = (array, obfuscate) => {
 };
 
 class Game {
-  constructor(deck) {
+  constructor(room, deck) {
+    this.room = room;
     this.deck = deck;
     this.player1Cards = [];
     this.player2Cards = [];
@@ -20,6 +23,7 @@ class Game {
       player2: false,
     };
     this.gameState = {
+      winner: null,
       turnType: 'pickFromDeck',
       turnOwner: null,
       player1Points: 0,
@@ -118,6 +122,10 @@ class Game {
 
     this.gameState.player1Points = Game.calcPoints(this.player1Field);
     this.gameState.player2Points = Game.calcPoints(this.player2Field);
+
+    if (this.getPlayer1Deck().length === 0 || this.getPlayer2Deck().length === 0) {
+      this.resolveGame('tie');
+    }
   }
 
   pickStartingPlayer() {
@@ -168,6 +176,24 @@ class Game {
     return currentPoints;
   }
 
+  resolveGame(loser) {
+    this.gameState.turnType = 'end';
+    this.gameState.turnOwner = null;
+    if (loser === 'tie') {
+      this.gameState.winner = 'tie';
+    } else if (loser === 'player1') {
+      this.gameState.winner = 'player2';
+    } else {
+      this.gameState.winner = 'player1';
+    }
+
+    setTimeout(() => {
+      this.queueUpdate(() => {
+        socketHandler.sendGameState(this.room);
+      });
+    }, 50);
+  }
+
   checkPoints(status) {
     const playerPoints = status === 'player1' ?
       this.gameState.player1Points :
@@ -181,9 +207,11 @@ class Game {
       this.switchTurnOwner();
     } else if (playerPoints < opponentPoints) {
       // Resolve win / loss
+      this.resolveGame(status);
     } else {
       if (this.player1Deck.length <= 0 || this.player2Deck.length <= 0) {
         // Resolve to a tie
+        this.resolveGame('tie');
       }
 
       // Points are tied - start again
@@ -192,6 +220,10 @@ class Game {
   }
 
   processTurn(status, index, callback) {
+    if (this.gameState.turnType !== 'playCard') {
+      return;
+    }
+
     const playerHand = status === 'player1' ? this.getPlayer1Cards() : this.getPlayer2Cards();
     const playerField = status === 'player1' ? this.player1Field : this.player2Field;
     const card = playerHand[index];
@@ -205,7 +237,12 @@ class Game {
 
     this.queueUpdate(() => {
       callback();
-      this.resetClearFlag();
+    });
+
+    this.queueUpdate(() => {
+      socketHandler.sendGameState(this.room, () => {
+        this.resetClearFlag();
+      });
     });
   }
 
@@ -242,7 +279,12 @@ class Game {
 
     this.queueUpdate(() => {
       callback(card);
-      this.resetClearFlag();
+    });
+
+    this.queueUpdate(() => {
+      socketHandler.sendGameState(this.room, () => {
+        this.resetClearFlag();
+      });
     });
   }
 

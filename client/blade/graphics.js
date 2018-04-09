@@ -99,6 +99,31 @@ const drawTurnIndicator = () => {
   }
 };
 
+const drawGameResult = () => {
+  prepCtx.save();
+  prepCtx.globalAlpha = 0.7;
+  prepCtx.fillStyle = "black";
+  prepCtx.fillRect(0, 0, prepCanvas.width, prepCanvas.height);
+  
+  prepCtx.globalAlpha = 1;
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  
+  if(playerStatus === gameState.winner){
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("You won!", prepCanvas.width / 2, prepCanvas.height / 2);
+  } else if(gameState.winner === "tie"){
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("You tied!", prepCanvas.width / 2, prepCanvas.height / 2);
+  } else {
+    prepCtx.fillStyle = "red";
+    prepCtx.fillText("You Lost!", prepCanvas.width / 2, prepCanvas.height / 2);
+  }
+  
+  prepCtx.restore();
+};
+
 const draw = () => {
   clearCanvas(prepCanvas, prepCtx);
   
@@ -140,7 +165,12 @@ const draw = () => {
   updateReadyStatus(readyStatus);
   
   drawScore(getPlayerPoints(), getOpponentPoints());
-  drawTurnIndicator();
+  
+  if(gameState.winner){
+    drawGameResult();
+  } else {
+    drawTurnIndicator();
+  }
   
   displayFrame();
 }

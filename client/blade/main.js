@@ -15,6 +15,7 @@ const gameState = {
   turnOwner: null,
   player1Points: 0,
   player2Points: 0,
+  winner: null,
 };
 
 let fields = {
