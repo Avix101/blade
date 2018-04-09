@@ -1,5 +1,5 @@
 class Animation {
-  constructor(logistics){
+  constructor(logistics, holdReadyStatus){
     const time = 0;
     this.startTime = 0;
     this.currentTime = time;
@@ -9,6 +9,7 @@ class Animation {
     this.propsEnd = logistics.propsEnd;
     this.propsCurrent = {};
     this.complete = false;
+    this.holdReadyStatus = holdReadyStatus
     
     const propKeys = Object.keys(this.propsBegin);
     for(let i = 0; i < propKeys.length; i++){
@@ -47,7 +48,11 @@ class Animation {
     if(ratio >= 1){
       this.complete = true;
     }
-  };
+  }
+  
+  ready(){
+    return this.holdReadyStatus;
+  }
   
   copyVals(obj){
     const keys = Object.keys(this.propsCurrent);

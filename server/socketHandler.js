@@ -37,7 +37,7 @@ const init = (ioInstance) => {
       if (roomHandler.joinRoom(data.room, socket)) {
         socket.emit('roomJoined', { status: roomHandler.getPlayerStatus(data.room, socket) });
         if (roomHandler.getPlayerCount(data.room) === 2) {
-          blade.beginGame(data.room, (turnOwner) => {
+          blade.beginGame(data.room, () => {
             const sockets = roomHandler.getSockets(data.room);
             const socket1Status = roomHandler.getPlayerStatus(sockets[0].roomJoined, sockets[0]);
             const socket2Status = roomHandler.getPlayerStatus(sockets[1].roomJoined, sockets[1]);
@@ -49,10 +49,17 @@ const init = (ioInstance) => {
               'setDeck',
               blade.getDeck(sockets[1].roomJoined, socket2Status),
             );
-            io.sockets.in(socket.roomJoined).emit('gamestate', { turnOwner });
+            const gameState = blade.getGameState(socket.roomJoined);
+            io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
           });
         }
       }
+    });
+
+    socket.on('ready', (data) => {
+      const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
+      const ready = data.status === true;
+      blade.playerReady(socket.roomJoined, status, ready);
     });
 
     socket.on('requestDeck', () => {
@@ -68,6 +75,16 @@ const init = (ioInstance) => {
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       blade.sortDeck(socket.roomJoined, status, () => {
         socket.emit('sortDeck');
+      });
+    });
+
+    socket.on('pickFromDeck', () => {
+      const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
+      blade.pickFromDeck(socket.roomJoined, status, (card) => {
+        io.sockets.in(socket.roomJoined).emit('pickFromDeck', { player: status, card });
+
+        const gameState = blade.getGameState(socket.roomJoined);
+        io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
       });
     });
 

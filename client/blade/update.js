@@ -8,9 +8,19 @@ const update = () => {
 
 const processClick = (e) => {
   if(selectedCard){
-    const playerHand = getPlayerHand();
-    socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
-    selectedCard = null;
+    switch(gameState.turnType){
+      case "pickFromDeck":
+        socket.emit('pickFromDeck');
+        selectedCard = null;
+        break;    
+      case "playCard":
+        const playerHand = getPlayerHand();
+        socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
+        selectedCard = null;
+        break;
+      default:
+        break;
+    }
   };
 };
 
@@ -58,7 +68,11 @@ const checkCardCollisions = () => {
     return;
   }
   
-  const playerHand = getPlayerHand();
+  let playerHand = getPlayerHand();
+  
+  if(gameState.turnType === "pickFromDeck"){
+    playerHand = [getTopDeckCard()];
+  }
   
   let newSelection = null;
   for(let i = 0; i < playerHand.length; i++){
@@ -221,6 +235,46 @@ const setDeck = (data) => {
   //flushCards(deck.player1, 770, true);
 };
 
+const getTopDeckCard = () => {
+  if(playerStatus === 'player1'){
+    return deck.p1Deck[deck.p1Deck.length - 1];
+  } else if(playerStatus === 'player2'){
+    return deck.p2Deck[deck.p2Deck.length - 1];
+  }
+};
+
+const getPlayerDeck = () => {
+  if(playerStatus === 'player1'){
+    return deck.p1Deck;
+  } else if(playerStatus === 'player2'){
+    return deck.p2Deck;
+  }
+};
+
+const getOpponentDeck = () => {
+  if(playerStatus === 'player1'){
+    return deck.p2Deck;
+  } else if(playerStatus === 'player2'){
+    return deck.p1Deck;
+  }
+};
+
+const getPlayerField = () => {
+  if(playerStatus === 'player1'){
+    return fields['player1'];
+  } else if(playerStatus === 'player2'){
+    return fields['player2'];
+  }
+};
+
+const getOpponentField = () => {
+  if(playerStatus === 'player1'){
+    return fields['player2'];
+  } else if(playerStatus === 'player2'){
+    return fields['player1'];
+  }
+};
+
 const getPlayerHand = () => {
   if(playerStatus === 'player1'){
     return deck.player1;
@@ -267,6 +321,25 @@ const initOpponentDeck = (opponentHand, opponentDeck) => {
     [foldInCards, [opponentHand, 1100, 70]],
     [flushCards, [opponentHand, 70, false, false, true]],
   ]);
+};
+
+let confirmReady = 0;
+const updateReadyStatus = (status) => {
+  if(readyToPlay === status || Object.keys(deck).length <= 0){
+    return;
+  } else {
+    confirmReady++;
+    
+    if(confirmReady >= 10 && status){
+      readyToPlay = status;
+      socket.emit('ready', {status});
+      confirmReady = 0;
+    } else if(!status){
+      readyToPlay = status;
+      socket.emit('ready', {status});
+      confirmReady = 0;
+    }
+  }
 }
 
 const sortDeck = (data) => {
@@ -284,8 +357,47 @@ const sortDeck = (data) => {
       const card = playerHand[i];
       card.originalLocation = {x: card.x, y: card.y};
     }
-    readyToPlay = true;
   });
+};
+
+const pickFromDeck = (data) => {
+  const player = data.player;
+  
+  if(playerStatus === player){
+    const playerDeck = getPlayerDeck();
+    const index = playerDeck.length - 1;
+    const card = playerDeck[index];
+    
+    if(selectedCard === card){
+      selectedCard = null;
+    }
+    
+    fields[player].push(card);
+    playerDeck.splice(index, 1);
+    card.reveal(data.card.ref);
+    
+    stackCards(fields[player], true, 500, () => {
+      animateDeckWhenReady(fields[player], () => {
+        startCardFlip([card], false);
+      });
+    });
+  } else {
+    const opponentDeck = getOpponentDeck();
+    const index = opponentDeck.length - 1;
+    const card = opponentDeck[index];
+    
+    fields[player].push(card);
+    opponentDeck.splice(index, 1);
+    card.reveal(data.card.ref);
+    
+    card.flipImage();
+    
+    stackCards(fields[player], false, 500, () => {
+      animateDeckWhenReady(fields[player], () => {
+        startCardFlip([card], false);
+      });
+    });
+  }
 };
 
 const playCard = (data) => {
@@ -295,10 +407,6 @@ const playCard = (data) => {
   
   if(selectedCard === card){
     selectedCard = null;
-  }
-  
-  if(!fields[data.cardSet]){
-    fields[data.cardSet] = [];
   }
   
   fields[data.cardSet].push(card);
@@ -311,9 +419,7 @@ const playCard = (data) => {
         const card = deck[data.cardSet][i];
         card.originalLocation = {x: card.x, y: card.y};
       }
-      readyToPlay = true; 
     });
-    readyToPlay = false;
   } else {
     card.reveal(data.name);
     card.flipImage();
@@ -329,17 +435,62 @@ const playCard = (data) => {
         const card = deck[data.cardSet][i];
         card.originalLocation = {x: card.x, y: card.y};
       }
-      readyToPlay = true; 
     });
-    readyToPlay = false;
   }
 };
 
 const updateGamestate = (data) => {
   const keys = Object.keys(data);
+  
   for(let i = 0; i < keys.length; i++){
     const key = keys[i];
     gameState[key] = data[key];
+  }
+  
+  if(gameState.clearFields === true){
+    clearFields();
+  }
+}
+
+const clearFields = () => {
+  const playerField = getPlayerField();
+  const opponentField = getOpponentField();
+  for(let i = 0; i < playerField.length; i++){
+    const card = playerField[i];
+    const moveAnim = new Animation(
+      {
+        begin: 0,
+        timeToFinish: 300,
+        propsBegin: {x: card.x},
+        propsEnd: {x: prepCanvas.width + 100},
+      }, true
+    );
+    
+    card.bindAnimation(moveAnim, () => {
+      animateDeckWhenReady(playerField, () => {
+        gameState.clearFields = false;
+        playerField.splice(0, playerField.length);
+      });
+    });
+  }
+  
+  for(let i = 0; i < opponentField.length; i++){
+    const card = opponentField[i];
+    const moveAnim = new Animation(
+      {
+        begin: 0,
+        timeToFinish: 300,
+        propsBegin: {x: card.x},
+        propsEnd: {x: -100},
+      }, true
+    );
+    
+    card.bindAnimation(moveAnim, () => {
+      animateDeckWhenReady(opponentField, () => {
+        gameState.clearFields = false;
+        opponentField.splice(0, opponentField.length);
+      });
+    });
   }
 }
 
@@ -352,7 +503,7 @@ const selectCard = (card, unselect, callback) => {
       timeToFinish: 200,
       propsBegin: {x: card.x, y: card.y, hueRotate: card.hueRotate},
       propsEnd: {x: card.originalLocation.x - xMod, y: card.originalLocation.y - yMod, hueRotate: 90}, 
-    }
+    }, false
   );
   
   card.bindAnimation(moveAnim, callback);
@@ -365,7 +516,7 @@ const unselectCard = (card, callback) => {
       timeToFinish: 200,
       propsBegin: {x: card.x, y: card.y, hueRotate: card.hueRotate},
       propsEnd: {x: card.originalLocation.x, y: card.originalLocation.y, hueRotate: 0},
-    }
+    }, false
   );
   
   card.bindAnimation(moveAnim, callback);
@@ -381,9 +532,10 @@ const moveTo = (cardCollection, x, y, time, offset, callback) => {
         timeToFinish: time,
         propsBegin: {x: card.x, y: card.y},
         propsEnd:  {x, y},
-      }
+      }, true
     );
     card.bindAnimation(moveAnim, () => {
+      card.originalLocation = {x: card.x, y: card.y};
       animateDeckWhenReady(cardCollection, () => {
         //cardCollection.reverse();
         if(callback){
@@ -412,7 +564,7 @@ const startCardFlip = (cardCollection, reverse, callback) => {
         timeToFinish: 200,
         propsBegin: {width: card.width, x: card.x, y: card.y},
         propsEnd: {width: 0, x: xDiff + card.x, y: yDiff + card.y},
-      }
+      }, true
     );
     const width = card.width;
     card.bindAnimation(flipAnimation, () => {
@@ -436,7 +588,7 @@ const endCardFlip = (card, cardCollection, width, xDiff, yDiff, callback) => {
       timeToFinish: 200,
       propsBegin: {width: 0, x: card.x, y: card.y},
       propsEnd: {width, x: card.x - xDiff, y: card.y - yDiff},
-    }
+    }, true
   );
   card.bindAnimation(flipAnimation, () => {
     animateDeckWhenReady(cardCollection, callback);
@@ -475,7 +627,7 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
         timeToFinish: sequentially ? 600 + (cardCollection.length - 1 - i) * 100 : 600,
         propsBegin: {x: card.x, y: card.y, radians: card.radians},
         propsEnd: {x, y, radians},
-      }
+      }, true
     );
     
     //anims.push(flushAnim);
@@ -508,7 +660,7 @@ const stackCards = (cardCollection, expandRight, time, callback) => {
         timeToFinish: time,
         propsBegin: {x: card.x, y: card.y, radians: card.radians},
         propsEnd: {x, y: baseY, radians: expandRight ? 0 : Math.PI},
-      }
+      }, true
     );
     
     card.bindAnimation(stackAnim, () => {
@@ -527,7 +679,7 @@ const foldInCards = (cardCollection, x, y, callback) => {
         timeToFinish: 300,
         propsBegin: {x: card.x, y: card.y, radians: card.radians},
         propsEnd: {x, y, radians: 0},
-      }
+      }, true
     );
     
     card.bindAnimation(foldInAnim, () => {

@@ -82,7 +82,11 @@ class Card {
       
       if(this.animation.complete){
         this.endAnimation();
+        return true;
       }
+      
+      return this.animation.ready();
     }
+    return this.animation !== null;
   };
 }

@@ -108,13 +108,18 @@ const draw = () => {
     return;
   }
   
+  let readyStatus = true;
+  
   const time = new Date().getTime();
   const fieldKeys = Object.keys(fields);
   for(let i = 0; i < fieldKeys.length; i++){
     const field = fields[fieldKeys[i]];
     for(let j = 0; j < field.length; j++){
       const card = field[j];
-      card.update(time);
+      const update = card.update(time);
+      if(update){
+        readyStatus = false;
+      }
       drawCard(card);
     }
   }
@@ -124,10 +129,15 @@ const draw = () => {
     const subDeck = deck[subDeckKeys[i]];
     for(let j = 0; j < subDeck.length; j++){
       const card = subDeck[j];;
-      card.update(time);
+      const update = card.update(time);
+      if(update){
+        readyStatus = false;
+      }
       drawCard(card);
     }
   }
+  
+  updateReadyStatus(readyStatus);
   
   drawScore(getPlayerPoints(), getOpponentPoints());
   drawTurnIndicator();

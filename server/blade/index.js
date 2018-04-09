@@ -95,9 +95,9 @@ const beginGame = (roomId, callback) => {
   games[roomId] = new Game(deck);
   const game = getGame(roomId);
   game.allocateCards(numCardsPerPlayer);
-  game.pickStartingPlayer();
+  // game.pickStartingPlayer();
 
-  callback(game.getTurnOwner());
+  callback();
 };
 
 const validateCard = (roomId, status, index) => {
@@ -106,6 +106,11 @@ const validateCard = (roomId, status, index) => {
     return true;
   }
   return false;
+};
+
+const pickFromDeck = (roomId, status, callback) => {
+  const game = getGame(roomId);
+  game.pickFromDeck(status, callback);
 };
 
 const playCard = (roomId, status, index, callback) => {
@@ -118,9 +123,17 @@ const playCard = (roomId, status, index, callback) => {
   }
 
   game.processTurn(status, index, () => {
-    game.switchTurnOwner();
     callback(status, card.ref);
   });
+};
+
+const playerReady = (roomId, status, ready) => {
+  if (status !== 'player1' && status !== 'player2') {
+    return;
+  }
+
+  const game = getGame(roomId);
+  game.readyPlayer(status, ready);
 };
 
 module.exports = {
@@ -132,5 +145,7 @@ module.exports = {
   getDeck,
   sortDeck,
   validateCard,
+  pickFromDeck,
   playCard,
+  playerReady,
 };
