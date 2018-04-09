@@ -9,7 +9,13 @@ const NULL_FUNC = () => {};
 let readyToPlay = false;
 let selectedCard = null;
 let mousePos = {x: 0, y: 0};
+
 let playerStatus;
+const gameState = {
+  turnOwner: null,
+  player1Points: 0,
+  player2Points: 0,
+};
 
 const aspectRatio = 16 / 9;
 
@@ -53,6 +59,7 @@ const init = () => {
   socket.on('setDeck', setDeck);
   socket.on('sortDeck', sortDeck);
   socket.on('playCard', playCard);
+  socket.on('gamestate', updateGamestate);
   
   //Eventually switch to server call to load cards
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);

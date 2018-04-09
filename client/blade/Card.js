@@ -67,6 +67,14 @@ class Card {
     return this.animation === null;
   };
   
+  reveal(name){
+    this.name = name;
+  };
+  
+  flipImage(){
+    this.radians = (this.radians + Math.PI) % (2 * Math.PI);
+  }
+  
   update(currentTime){
     if(this.animation){
       this.animation.update(currentTime);

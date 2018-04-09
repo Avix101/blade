@@ -4,6 +4,11 @@ class Card {
     this.sortValue = template.sortValue;
     this.ref = template.name;
     this.imageFile = template.imageFile;
+    this.alterValue = null;
+  }
+
+  alterValue(value) {
+    this.alterValue = value;
   }
 }
 

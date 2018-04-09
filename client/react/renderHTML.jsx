@@ -15,6 +15,7 @@ const renderGame = (width, height) => {
   viewport = document.querySelector("#viewport");
   viewCtx = viewport.getContext('2d');
   viewport.addEventListener('mousemove', getMouse);
+  viewport.addEventListener('mouseleave', processMouseLeave);
   viewport.addEventListener('click', processClick);
 };
 

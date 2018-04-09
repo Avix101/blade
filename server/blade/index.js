@@ -34,6 +34,11 @@ const getDeck = (roomId, deckType) => {
   return deck;
 };
 
+const getGameState = (roomId) => {
+  const game = getGame(roomId);
+  return game.getGameState();
+};
+
 const getSingleCardSet = (roomId, type) => {
   const game = getGame(roomId);
   switch (type) {
@@ -90,8 +95,9 @@ const beginGame = (roomId, callback) => {
   games[roomId] = new Game(deck);
   const game = getGame(roomId);
   game.allocateCards(numCardsPerPlayer);
+  game.pickStartingPlayer();
 
-  callback();
+  callback(game.getTurnOwner());
 };
 
 const validateCard = (roomId, status, index) => {
@@ -106,15 +112,22 @@ const playCard = (roomId, status, index, callback) => {
   const game = getGame(roomId);
   const deck = getSingleCardSet(roomId, status);
   const card = deck[index];
-  game.player1Field.push(card);
-  deck.splice(index, 1);
-  callback(status);
+
+  if (game.getTurnOwner() !== status) {
+    return;
+  }
+
+  game.processTurn(status, index, () => {
+    game.switchTurnOwner();
+    callback(status, card.ref);
+  });
 };
 
 module.exports = {
   getCardImages,
   beginGame,
   gameExists,
+  getGameState,
   getGame,
   getDeck,
   sortDeck,

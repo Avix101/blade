@@ -160,6 +160,16 @@ var Card = function () {
       return this.animation === null;
     }
   }, {
+    key: "reveal",
+    value: function reveal(name) {
+      this.name = name;
+    }
+  }, {
+    key: "flipImage",
+    value: function flipImage() {
+      this.radians = (this.radians + Math.PI) % (2 * Math.PI);
+    }
+  }, {
     key: "update",
     value: function update(currentTime) {
       if (this.animation) {
@@ -216,6 +226,52 @@ var drawCard = function drawCard(card) {
   prepCtx.restore();
 };
 
+var drawScore = function drawScore(playerPoints, opponentPoints) {
+  prepCtx.save();
+  prepCtx.font = "96pt Fira Sans, sans-serif";
+
+  var playerWidth = prepCtx.measureText(playerPoints).width;
+  var opponentWidth = prepCtx.measureText(opponentPoints).width;
+  var halfWidth = prepCanvas.width / 2 - 3;
+
+  console.log;
+
+  var opponentGradient = prepCtx.createLinearGradient(0, 355, 0, 427);
+  var playerGradient = prepCtx.createLinearGradient(0, 700, 0, 772);
+  playerGradient.addColorStop(0, "white");
+  opponentGradient.addColorStop(0, "white");
+  playerGradient.addColorStop(0.3, "#dbb75c");
+  opponentGradient.addColorStop(0.3, "#dbb75c");
+
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+
+  prepCtx.fillStyle = opponentGradient;
+  prepCtx.fillText(opponentPoints, halfWidth, 355);
+
+  prepCtx.fillStyle = playerGradient;
+  prepCtx.fillText(playerPoints, halfWidth, 700);
+
+  prepCtx.restore();
+};
+
+var drawTurnIndicator = function drawTurnIndicator() {
+  var playerTurn = gameState.turnOwner === playerStatus;
+
+  prepCtx.save();
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+
+  if (playerTurn) {
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("Your Turn!", 520, 640);
+  } else {
+    prepCtx.fillStyle = "red";
+    prepCtx.fillText("Opponent's Turn!", 1400, 400);
+  }
+};
+
 var draw = function draw() {
   clearCanvas(prepCanvas, prepCtx);
 
@@ -226,25 +282,28 @@ var draw = function draw() {
   }
 
   var time = new Date().getTime();
-  var subDeckKeys = Object.keys(deck);
-  for (var i = 0; i < subDeckKeys.length; i++) {
-    var subDeck = deck[subDeckKeys[i]];
-    for (var j = 0; j < subDeck.length; j++) {
-      var card = subDeck[j];;
+  var fieldKeys = Object.keys(fields);
+  for (var i = 0; i < fieldKeys.length; i++) {
+    var field = fields[fieldKeys[i]];
+    for (var j = 0; j < field.length; j++) {
+      var card = field[j];
       card.update(time);
       drawCard(card);
     }
   }
 
-  var fieldKeys = Object.keys(fields);
-  for (var _i = 0; _i < fieldKeys.length; _i++) {
-    var field = fields[fieldKeys[_i]];
-    for (var _j = 0; _j < field.length; _j++) {
-      var _card = field[_j];
+  var subDeckKeys = Object.keys(deck);
+  for (var _i = 0; _i < subDeckKeys.length; _i++) {
+    var subDeck = deck[subDeckKeys[_i]];
+    for (var _j = 0; _j < subDeck.length; _j++) {
+      var _card = subDeck[_j];;
       _card.update(time);
       drawCard(_card);
     }
   }
+
+  drawScore(getPlayerPoints(), getOpponentPoints());
+  drawTurnIndicator();
 
   displayFrame();
 };
@@ -265,7 +324,13 @@ var NULL_FUNC = function NULL_FUNC() {};
 var readyToPlay = false;
 var selectedCard = null;
 var mousePos = { x: 0, y: 0 };
+
 var playerStatus = void 0;
+var gameState = {
+  turnOwner: null,
+  player1Points: 0,
+  player2Points: 0
+};
 
 var aspectRatio = 16 / 9;
 
@@ -309,6 +374,7 @@ var init = function init() {
   socket.on('setDeck', setDeck);
   socket.on('sortDeck', sortDeck);
   socket.on('playCard', playCard);
+  socket.on('gamestate', updateGamestate);
 
   //Eventually switch to server call to load cards
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
@@ -336,6 +402,13 @@ var processClick = function processClick(e) {
     var playerHand = getPlayerHand();
     socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
     selectedCard = null;
+  };
+};
+
+var processMouseLeave = function processMouseLeave(e) {
+  mousePos = {
+    x: -200,
+    y: -200
   };
 };
 
@@ -556,6 +629,22 @@ var getPlayerHand = function getPlayerHand() {
   }
 };
 
+var getPlayerPoints = function getPlayerPoints() {
+  if (playerStatus === 'player1') {
+    return gameState.player1Points;
+  } else if (playerStatus === 'player2') {
+    return gameState.player2Points;
+  }
+};
+
+var getOpponentPoints = function getOpponentPoints() {
+  if (playerStatus === 'player1') {
+    return gameState.player2Points;
+  } else if (playerStatus === 'player2') {
+    return gameState.player1Points;
+  }
+};
+
 var initPlayerDeck = function initPlayerDeck(playerHand, playerDeck) {
   chainAnimations([[moveTo, [playerHand.concat(playerDeck), -200, 800, 0, false]], [moveTo, [playerHand.concat(playerDeck), 300, 800, 400, true]], [flushCards, [playerHand, 770, true, true, true]], [startCardFlip, [playerHand, false]], [foldInCards, [playerHand, 1100, 770]], [startCardFlip, [playerHand, true]]], function () {
     socket.emit('sortDeck');
@@ -587,21 +676,54 @@ var playCard = function playCard(data) {
   var card = cardSet[data.index];
   cardSet.splice(data.index, 1);
 
+  if (selectedCard === card) {
+    selectedCard = null;
+  }
+
   if (!fields[data.cardSet]) {
     fields[data.cardSet] = [];
   }
 
   fields[data.cardSet].push(card);
-  moveTo([card], 1000, 500, 500, false);
-  deck[data.cardSet].reverse();
-  flushCards(deck[data.cardSet], 770, true, false, true, function () {
-    for (var i = 0; i < deck[data.cardSet].length; i++) {
-      var _card = deck[data.cardSet][i];
-      _card.originalLocation = { x: _card.x, y: _card.y };
-    }
-    readyToPlay = true;
-  });
-  readyToPlay = false;
+  //moveTo([card], 1000, 500, 500, false);
+  if (deck[data.cardSet] === getPlayerHand()) {
+    stackCards(fields[data.cardSet], true, 500);
+    deck[data.cardSet].reverse();
+    flushCards(deck[data.cardSet], 770, true, false, true, function () {
+      for (var i = 0; i < deck[data.cardSet].length; i++) {
+        var _card = deck[data.cardSet][i];
+        _card.originalLocation = { x: _card.x, y: _card.y };
+      }
+      readyToPlay = true;
+    });
+    readyToPlay = false;
+  } else {
+    card.reveal(data.name);
+    card.flipImage();
+
+    stackCards(fields[data.cardSet], false, 500, function () {
+      animateDeckWhenReady(fields[data.cardSet], function () {
+        startCardFlip([card], false);
+      });
+    });
+    deck[data.cardSet].reverse();
+    flushCards(deck[data.cardSet], 70, false, false, true, function () {
+      for (var i = 0; i < deck[data.cardSet].length; i++) {
+        var _card2 = deck[data.cardSet][i];
+        _card2.originalLocation = { x: _card2.x, y: _card2.y };
+      }
+      readyToPlay = true;
+    });
+    readyToPlay = false;
+  }
+};
+
+var updateGamestate = function updateGamestate(data) {
+  var keys = Object.keys(data);
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    gameState[key] = data[key];
+  }
 };
 
 var selectCard = function selectCard(card, unselect, callback) {
@@ -704,7 +826,7 @@ var endCardFlip = function endCardFlip(card, cardCollection, width, xDiff, yDiff
 var flushCards = function flushCards(cardCollection, baseLineY, curveDown, sequentially, reverse, callback) {
   //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card2 = cardCollection[i];
+    var _card3 = cardCollection[i];
     var x = 1100 + 100 * (cardCollection.length / 2 - 1 - i);
 
     var middle = Math.floor(cardCollection.length / 2);
@@ -725,12 +847,12 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
     var flushAnim = new Animation({
       begin: sequentially ? (cardCollection.length - 1 - i) * 200 : 0,
       timeToFinish: sequentially ? 600 + (cardCollection.length - 1 - i) * 100 : 600,
-      propsBegin: { x: _card2.x, y: _card2.y, radians: _card2.radians },
+      propsBegin: { x: _card3.x, y: _card3.y, radians: _card3.radians },
       propsEnd: { x: x, y: y, radians: radians }
     });
 
     //anims.push(flushAnim);
-    _card2.bindAnimation(flushAnim, function () {
+    _card3.bindAnimation(flushAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
       //animateDeckWhenReady(cardCollection, () => {
       //startCardFlip(cardCollection);
@@ -744,18 +866,40 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
   //return anims;
 };
 
+var stackCards = function stackCards(cardCollection, expandRight, time, callback) {
+
+  var baseX = expandRight ? 1080 : 670;
+  var baseY = expandRight ? 535 : 300;
+  for (var i = 0; i < cardCollection.length; i++) {
+    var _card4 = cardCollection[i];
+
+    var x = expandRight ? baseX + 40 * i : baseX - 40 * i;
+
+    var stackAnim = new Animation({
+      begin: 0,
+      timeToFinish: time,
+      propsBegin: { x: _card4.x, y: _card4.y, radians: _card4.radians },
+      propsEnd: { x: x, y: baseY, radians: expandRight ? 0 : Math.PI }
+    });
+
+    _card4.bindAnimation(stackAnim, function () {
+      animateDeckWhenReady(cardCollection, callback);
+    });
+  }
+};
+
 var foldInCards = function foldInCards(cardCollection, x, y, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card3 = cardCollection[i];
+    var _card5 = cardCollection[i];
 
     var foldInAnim = new Animation({
       begin: 0,
       timeToFinish: 300,
-      propsBegin: { x: _card3.x, y: _card3.y, radians: _card3.radians },
+      propsBegin: { x: _card5.x, y: _card5.y, radians: _card5.radians },
       propsEnd: { x: x, y: y, radians: 0 }
     });
 
-    _card3.bindAnimation(foldInAnim, function () {
+    _card5.bindAnimation(foldInAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
@@ -774,6 +918,7 @@ var renderGame = function renderGame(width, height) {
   viewport = document.querySelector("#viewport");
   viewCtx = viewport.getContext('2d');
   viewport.addEventListener('mousemove', getMouse);
+  viewport.addEventListener('mouseleave', processMouseLeave);
   viewport.addEventListener('click', processClick);
 };
 

@@ -14,6 +14,13 @@ const processClick = (e) => {
   };
 };
 
+const processMouseLeave = (e) => {
+  mousePos = {
+    x: -200,
+    y: -200,
+  };
+};
+
 const getMouse = (e) => {
   const rect = viewport.getBoundingClientRect();
   const widthRatio = rect.width / prepCanvas.width;
@@ -222,6 +229,22 @@ const getPlayerHand = () => {
   }
 };
 
+const getPlayerPoints = () => {
+  if(playerStatus === 'player1'){
+    return gameState.player1Points;
+  } else if(playerStatus === 'player2'){
+    return gameState.player2Points;
+  }
+};
+
+const getOpponentPoints = () => {
+  if(playerStatus === 'player1'){
+    return gameState.player2Points;
+  } else if(playerStatus === 'player2'){
+    return gameState.player1Points;
+  }
+};
+
 const initPlayerDeck = (playerHand, playerDeck) => {
   chainAnimations([
     [moveTo, [playerHand.concat(playerDeck), -200, 800, 0, false]],
@@ -270,21 +293,54 @@ const playCard = (data) => {
   const card = cardSet[data.index];
   cardSet.splice(data.index, 1);
   
+  if(selectedCard === card){
+    selectedCard = null;
+  }
+  
   if(!fields[data.cardSet]){
     fields[data.cardSet] = [];
   }
   
   fields[data.cardSet].push(card);
-  moveTo([card], 1000, 500, 500, false);
-  deck[data.cardSet].reverse();
-  flushCards(deck[data.cardSet], 770, true, false, true, () => { 
-    for(let i = 0; i < deck[data.cardSet].length; i++){
-      const card = deck[data.cardSet][i];
-      card.originalLocation = {x: card.x, y: card.y};
-    }
-    readyToPlay = true; 
-  });
-  readyToPlay = false;
+  //moveTo([card], 1000, 500, 500, false);
+  if(deck[data.cardSet] === getPlayerHand()){
+    stackCards(fields[data.cardSet], true, 500);
+    deck[data.cardSet].reverse();
+    flushCards(deck[data.cardSet], 770, true, false, true, () => { 
+      for(let i = 0; i < deck[data.cardSet].length; i++){
+        const card = deck[data.cardSet][i];
+        card.originalLocation = {x: card.x, y: card.y};
+      }
+      readyToPlay = true; 
+    });
+    readyToPlay = false;
+  } else {
+    card.reveal(data.name);
+    card.flipImage();
+    
+    stackCards(fields[data.cardSet], false, 500, () => {
+      animateDeckWhenReady(fields[data.cardSet], () => {
+        startCardFlip([card], false);
+      });
+    });
+    deck[data.cardSet].reverse();
+    flushCards(deck[data.cardSet], 70, false, false, true, () => { 
+      for(let i = 0; i < deck[data.cardSet].length; i++){
+        const card = deck[data.cardSet][i];
+        card.originalLocation = {x: card.x, y: card.y};
+      }
+      readyToPlay = true; 
+    });
+    readyToPlay = false;
+  }
+};
+
+const updateGamestate = (data) => {
+  const keys = Object.keys(data);
+  for(let i = 0; i < keys.length; i++){
+    const key = keys[i];
+    gameState[key] = data[key];
+  }
 }
 
 const selectCard = (card, unselect, callback) => {
@@ -435,6 +491,30 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
     cardCollection.reverse();
   }
   //return anims;
+};
+
+const stackCards = (cardCollection, expandRight, time, callback) => {
+  
+  const baseX = expandRight ? 1080 : 670;
+  const baseY = expandRight ? 535 : 300;
+  for(let i = 0; i < cardCollection.length; i++){
+    const card = cardCollection[i];
+    
+    const x = expandRight ? baseX + (40 * i) : baseX - (40 * i);
+    
+    const stackAnim = new Animation(
+      {
+        begin: 0,
+        timeToFinish: time,
+        propsBegin: {x: card.x, y: card.y, radians: card.radians},
+        propsEnd: {x, y: baseY, radians: expandRight ? 0 : Math.PI},
+      }
+    );
+    
+    card.bindAnimation(stackAnim, () => {
+      animateDeckWhenReady(cardCollection, callback);
+    });
+  }
 };
 
 const foldInCards = (cardCollection, x, y, callback) => {

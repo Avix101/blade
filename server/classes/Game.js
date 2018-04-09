@@ -14,6 +14,12 @@ class Game {
     this.player2Deck = [];
     this.player1Field = [];
     this.player2Field = [];
+    this.playersReady = {};
+    this.gameState = {
+      turnOwner: null,
+      player1Points: 0,
+      player2Points: 0,
+    };
   }
 
   allocateCards(numPerPlayer) {
@@ -59,8 +65,66 @@ class Game {
     return processArray(this.player2Deck, obfuscate);
   }
 
+  getTurnOwner() {
+    return this.gameState.turnOwner;
+  }
+
+  getGameState() {
+    return this.gameState;
+  }
+
+  pickStartingPlayer() {
+    const randomNum = Math.floor(Math.random() * 2);
+    this.gameState.turnOwner = randomNum === 0 ? 'player1' : 'player2';
+  }
+
+  switchTurnOwner() {
+    if (this.gameState.turnOwner === 'player1') {
+      this.gameState.turnOwner = 'player2';
+    } else {
+      this.gameState.turnOwner = 'player1';
+    }
+  }
+
+  static calcPoints(cardCollection) {
+    let currentPoints = 0;
+
+    for (let i = 0; i < cardCollection.length; i++) {
+      const card = cardCollection[i];
+
+      if (card.alterValue) {
+        currentPoints += card.alterValue;
+      } else {
+        switch (card.ref) {
+          case 'force':
+            currentPoints *= 2;
+            break;
+          default:
+            currentPoints += card.value;
+            break;
+        }
+      }
+    }
+
+    return currentPoints;
+  }
+
+  processTurn(status, index, callback) {
+    const playerHand = status === 'player1' ? this.getPlayer1Cards() : this.getPlayer2Cards();
+    const playerField = status === 'player1' ? this.player1Field : this.player2Field;
+    const card = playerHand[index];
+    playerField.push(card);
+    playerHand.splice(index, 1);
+    this.gameState.player1Points = Game.calcPoints(this.player1Field);
+    this.gameState.player2Points = Game.calcPoints(this.player2Field);
+
+    callback();
+  }
+
   static sortDeck(cardCollection) {
-    return cardCollection.sort((cardA, cardB) => cardB.sortValue - cardA.sortValue);
+    const sortedArray = cardCollection.sort((cardA, cardB) => cardB.sortValue - cardA.sortValue);
+    sortedArray.reverse();
+    return sortedArray;
   }
 }
 

@@ -53,6 +53,52 @@ const drawCard = (card) => {
   prepCtx.restore();
 };
 
+const drawScore = (playerPoints, opponentPoints) => {
+  prepCtx.save();
+  prepCtx.font = "96pt Fira Sans, sans-serif";
+  
+  const playerWidth = prepCtx.measureText(playerPoints).width;
+  const opponentWidth = prepCtx.measureText(opponentPoints).width;
+  const halfWidth = (prepCanvas.width / 2) - 3;
+  
+  console.log
+  
+  const opponentGradient = prepCtx.createLinearGradient(0, 355, 0, 427);
+  const playerGradient = prepCtx.createLinearGradient(0, 700, 0, 772);
+  playerGradient.addColorStop(0, "white");
+  opponentGradient.addColorStop(0, "white");
+  playerGradient.addColorStop(0.3, "#dbb75c");
+  opponentGradient.addColorStop(0.3, "#dbb75c");
+  
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  
+  prepCtx.fillStyle = opponentGradient;
+  prepCtx.fillText(opponentPoints, halfWidth, 355);
+  
+  prepCtx.fillStyle = playerGradient;
+  prepCtx.fillText(playerPoints, halfWidth, 700);
+  
+  prepCtx.restore();
+};
+
+const drawTurnIndicator = () => {
+  const playerTurn = gameState.turnOwner === playerStatus;
+  
+  prepCtx.save();
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  
+  if(playerTurn){
+    prepCtx.fillStyle = "blue";
+    prepCtx.fillText("Your Turn!", 520, 640);
+  } else {
+    prepCtx.fillStyle = "red";
+    prepCtx.fillText("Opponent's Turn!", 1400, 400);
+  }
+};
+
 const draw = () => {
   clearCanvas(prepCanvas, prepCtx);
   
@@ -63,6 +109,16 @@ const draw = () => {
   }
   
   const time = new Date().getTime();
+  const fieldKeys = Object.keys(fields);
+  for(let i = 0; i < fieldKeys.length; i++){
+    const field = fields[fieldKeys[i]];
+    for(let j = 0; j < field.length; j++){
+      const card = field[j];
+      card.update(time);
+      drawCard(card);
+    }
+  }
+  
   const subDeckKeys = Object.keys(deck);
   for(let i = 0; i < subDeckKeys.length; i++){
     const subDeck = deck[subDeckKeys[i]];
@@ -73,15 +129,8 @@ const draw = () => {
     }
   }
   
-  const fieldKeys = Object.keys(fields);
-  for(let i = 0; i < fieldKeys.length; i++){
-    const field = fields[fieldKeys[i]];
-    for(let j = 0; j < field.length; j++){
-      const card = field[j];
-      card.update(time);
-      drawCard(card);
-    }
-  }
+  drawScore(getPlayerPoints(), getOpponentPoints());
+  drawTurnIndicator();
   
   displayFrame();
 }

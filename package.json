@@ -10,6 +10,7 @@
     "watchLoginBundle": "babel --watch ./client/login ./client/react --presets react --out-file ./hosted/loginBundle.js",
     "watchBladeBundle": "babel --watch ./client/blade ./client/react --presets react --out-file ./hosted/bladeBundle.js",
     "nodemon": "nodemon --watch ./server ./server/app.js",
+    "nodemonHeroku": "nodemon --watch ./server --exec heroku local web",
     "start": "node ./server/app.js",
     "pretest": "eslint ./server --fix",
     "test": "echo \"Tests Complete\""

@@ -37,7 +37,7 @@ const init = (ioInstance) => {
       if (roomHandler.joinRoom(data.room, socket)) {
         socket.emit('roomJoined', { status: roomHandler.getPlayerStatus(data.room, socket) });
         if (roomHandler.getPlayerCount(data.room) === 2) {
-          blade.beginGame(data.room, () => {
+          blade.beginGame(data.room, (turnOwner) => {
             const sockets = roomHandler.getSockets(data.room);
             const socket1Status = roomHandler.getPlayerStatus(sockets[0].roomJoined, sockets[0]);
             const socket2Status = roomHandler.getPlayerStatus(sockets[1].roomJoined, sockets[1]);
@@ -49,6 +49,7 @@ const init = (ioInstance) => {
               'setDeck',
               blade.getDeck(sockets[1].roomJoined, socket2Status),
             );
+            io.sockets.in(socket.roomJoined).emit('gamestate', { turnOwner });
           });
         }
       }
@@ -73,8 +74,15 @@ const init = (ioInstance) => {
     socket.on('playCard', (data) => {
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       if (blade.validateCard(socket.roomJoined, status, data.index)) {
-        blade.playCard(socket.roomJoined, status, data.index, (cardSet) => {
-          socket.emit('playCard', { index: data.index, cardSet });
+        blade.playCard(socket.roomJoined, status, data.index, (cardSet, name) => {
+          // socket.emit('playCard', { index: data.index, cardSet });
+          io.sockets.in(socket.roomJoined).emit(
+            'playCard',
+            { index: data.index, cardSet, name },
+          );
+
+          const gameState = blade.getGameState(socket.roomJoined);
+          io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
         });
       }
     });
