@@ -95,7 +95,7 @@ const checkCardCollisions = () => {
     }
     
     selectedCard = newSelection;
-    selectCard(selectedCard, NULL_FUNC);
+    selectCard(selectedCard, true, NULL_FUNC);
   } else if(!newSelection && selectedCard !== null) {
     unselectCard(selectedCard, NULL_FUNC);
     selectedCard = null;
@@ -322,7 +322,12 @@ const initOpponentDeck = (opponentHand, opponentDeck) => {
     [flushCards, [opponentHand, 70, false, true, true]],
     [foldInCards, [opponentHand, 1100, 70]],
     [flushCards, [opponentHand, 70, false, false, true]],
-  ]);
+  ], () => {
+    for(let i = 0; i < opponentHand.length; i++){
+      const card = opponentHand[i];
+      card.originalLocation = {x: card.x, y: card.y};
+    }
+  });
 };
 
 let confirmReady = 0;
@@ -402,42 +407,148 @@ const pickFromDeck = (data) => {
   }
 };
 
+const splicePlayerCard = (cardSet, index) => {
+  cardSet.splice(index, 1);
+  cardSet.reverse();
+  flushCards(cardSet, 770, true, false, true, () => { 
+    for(let i = 0; i < cardSet.length; i++){
+      const card = cardSet[i];
+      card.originalLocation = {x: card.x, y: card.y};
+    }
+  });
+};
+
+const spliceOpponentCard = (cardSet, index) => {
+  cardSet.splice(index, 1);
+  cardSet.reverse();
+  flushCards(cardSet, 70, false, false, true, () => { 
+    for(let i = 0; i < cardSet.length; i++){
+      const card = cardSet[i];
+      card.originalLocation = {x: card.x, y: card.y};
+    }
+  });
+};
+
 const playCard = (data) => {
   const cardSet = deck[data.cardSet];
   const card = cardSet[data.index];
-  cardSet.splice(data.index, 1);
   
   if(selectedCard === card){
+    unselectCard(selectedCard);
     selectedCard = null;
   }
   
-  fields[data.cardSet].push(card);
   //moveTo([card], 1000, 500, 500, false);
   if(deck[data.cardSet] === getPlayerHand()){
-    stackCards(fields[data.cardSet], true, 500);
-    deck[data.cardSet].reverse();
-    flushCards(deck[data.cardSet], 770, true, false, true, () => { 
-      for(let i = 0; i < deck[data.cardSet].length; i++){
-        const card = deck[data.cardSet][i];
-        card.originalLocation = {x: card.x, y: card.y};
-      }
-    });
+    switch(card.name){
+      case "bolt":
+        selectCard(card, true, () => {
+          splicePlayerCard(cardSet, data.index);
+        });
+        const opponentField = getOpponentField();
+        const target = opponentField[opponentField.length - 1];
+        startCardFlip([target], false);
+        break;
+      case "mirror":
+        selectCard(card, true, () => {
+          splicePlayerCard(cardSet, data.index);
+        });
+        const temp = getPlayerField();
+        if(playerStatus === 'player1'){
+          fields['player1'] = fields['player2'];
+          fields['player2'] = temp;
+          stackCards(fields['player1'], true, 500);
+          stackCards(fields['player2'], false, 500);
+        } else {
+          fields['player2'] = fields['player1'];
+          fields['player1'] = temp;
+          stackCards(fields['player1'], false, 500);
+          stackCards(fields['player2'], true, 500);
+        }
+        break;
+      case "1":
+        const playerField = getPlayerField();
+        const affectedCard = playerField[playerField.length - 1];
+        if(!affectedCard.isRevealed()){
+          selectCard(card, true, () => {
+            splicePlayerCard(cardSet, data.index);
+          });
+          startCardFlip([affectedCard], false);
+        } else {
+          fields[data.cardSet].push(card);
+          stackCards(fields[data.cardSet], true, 500);
+          splicePlayerCard(cardSet, data.index);
+        }
+        break;
+      default:
+        fields[data.cardSet].push(card);
+        stackCards(fields[data.cardSet], true, 500);
+        splicePlayerCard(cardSet, data.index);
+        break;
+    }
   } else {
     card.reveal(data.name);
     card.flipImage();
     
-    stackCards(fields[data.cardSet], false, 500, () => {
-      animateDeckWhenReady(fields[data.cardSet], () => {
-        startCardFlip([card], false);
-      });
-    });
-    deck[data.cardSet].reverse();
-    flushCards(deck[data.cardSet], 70, false, false, true, () => { 
-      for(let i = 0; i < deck[data.cardSet].length; i++){
-        const card = deck[data.cardSet][i];
-        card.originalLocation = {x: card.x, y: card.y};
-      }
-    });
+    switch(data.name){
+      case "bolt":
+        selectCard(card, true, () => {
+          startCardFlip([card], false, () => {
+            const playerField = getPlayerField();
+            const target = playerField[playerField.length - 1];
+            startCardFlip([target], false);
+            
+            //Animate or timeout so that opponent can actually see move
+            spliceOpponentCard(cardSet, data.index);
+          });
+        });
+        
+        break;
+      case "mirror":
+        selectCard(card, true, () => {
+          startCardFlip([card], false, () => {
+            const temp = getPlayerField();
+            if(playerStatus === 'player1'){
+              fields['player1'] = fields['player2'];
+              fields['player2'] = temp;
+              stackCards(fields['player1'], true, 500);
+              stackCards(fields['player2'], false, 500);
+            } else {
+              fields['player2'] = fields['player1'];
+              fields['player1'] = temp;
+              stackCards(fields['player1'], false, 500);
+              stackCards(fields['player2'], true, 500);
+            }
+            spliceOpponentCard(cardSet, data.index);
+          });
+        });
+        break;
+      case "1":
+        const opponentField = getOpponentField();
+        const affectedCard = opponentField[opponentField.length - 1];
+        if(!affectedCard.isRevealed()){
+          selectCard(card, true, () => {
+            startCardFlip([affectedCard], false, () => {
+              spliceOpponentCard(cardSet, data.index);
+            });
+          });
+          
+        } else {
+          fields[data.cardSet].push(card);
+          stackCards(fields[data.cardSet], true, 500);
+          spliceOpponentCard(cardSet, data.index);
+        }
+        break;
+      default:
+        fields[data.cardSet].push(card);
+        spliceOpponentCard(cardSet, data.index);
+        stackCards(fields[data.cardSet], false, 500, () => {
+          animateDeckWhenReady(fields[data.cardSet], () => {
+            startCardFlip([card], false);
+          });
+        });
+        break;
+    }
   }
 };
 
@@ -498,9 +609,13 @@ const clearFields = () => {
   }
 }
 
-const selectCard = (card, unselect, callback) => {
-  const yMod = Math.cos(card.radians) * 60;
-  const xMod = Math.sin(card.radians) * 60;
+const selectCard = (card, playerSelect, callback) => {
+  let yMod = Math.cos(card.radians) * 60;
+  let xMod = Math.sin(card.radians) * 60;
+  if(!playerSelect){
+    xMod *= -1;
+    yMod *= -1;
+  }
   const moveAnim = new Animation(
     {
       begin: 0,

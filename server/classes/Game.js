@@ -132,20 +132,51 @@ class Game {
     if (this.gameState.player1Points > this.gameState.player2Points) {
       this.gameState.turnOwner = 'player2';
       this.gameState.turnType = 'playCard';
+      if (!Game.checkForNonSpecials(this.getPlayer2Cards())) {
+        this.resolveGame('player2');
+      }
     } else if (this.gameState.player2Points > this.gameState.player1Points) {
       this.gameState.turnOwner = 'player1';
       this.gameState.turnType = 'playCard';
+      if (!Game.checkForNonSpecials(this.getPlayer1Cards())) {
+        this.resolveGame('player1');
+      }
     } else {
       // Points are tied, clear the board and draw again if possible
       this.clearFields();
     }
   }
 
+  static checkForNonSpecials(cardCollection) {
+    for (let i = 0; i < cardCollection.length; i++) {
+      const card = cardCollection[i];
+
+      switch (card.ref) {
+        case 'bolt':
+        case 'mirror':
+        case 'blast':
+        case 'force':
+          break;
+        default:
+          return true;
+      }
+    }
+    return false;
+  }
+
   switchTurnOwner() {
     if (this.gameState.turnOwner === 'player1') {
       this.gameState.turnOwner = 'player2';
+      const cardCollection = this.getPlayer2Cards();
+      if (cardCollection.length <= 0 || !Game.checkForNonSpecials(cardCollection)) {
+        this.resolveGame('player2');
+      }
     } else {
       this.gameState.turnOwner = 'player1';
+      const cardCollection = this.getPlayer1Cards();
+      if (cardCollection.length <= 0 || !Game.checkForNonSpecials(cardCollection)) {
+        this.resolveGame('player1');
+      }
     }
   }
 
@@ -159,7 +190,7 @@ class Game {
     for (let i = 0; i < cardCollection.length; i++) {
       const card = cardCollection[i];
 
-      if (card.alterValue) {
+      if (card.alterValue !== null) {
         currentPoints += card.alterValue;
       } else {
         switch (card.ref) {
@@ -219,15 +250,57 @@ class Game {
     }
   }
 
-  processTurn(status, index, callback) {
+  processTurn(status, index, blastIndex, callback) {
     if (this.gameState.turnType !== 'playCard') {
       return;
     }
 
     const playerHand = status === 'player1' ? this.getPlayer1Cards() : this.getPlayer2Cards();
+    const opponentHand = status === 'player1' ? this.getPlayer2Cards() : this.getPlayer1Cards();
     const playerField = status === 'player1' ? this.player1Field : this.player2Field;
+    const opponentField = status === 'player1' ? this.player2Field : this.player1Field;
     const card = playerHand[index];
-    playerField.push(card);
+
+    switch (card.ref) {
+      case 'bolt': {
+        const affectedCard = opponentField[opponentField.length - 1];
+        affectedCard.alterValue = 0;
+        break;
+      }
+      case 'mirror': {
+        const temp = opponentField;
+        if (status === 'player1') {
+          this.player2Field = this.player1Field;
+          this.player1Field = temp;
+        } else {
+          this.player1Field = this.player2Field;
+          this.player2Field = temp;
+        }
+        break;
+      }
+      case 'blast': {
+        opponentHand.splice(blastIndex, 1);
+        break;
+      }
+      case '1': {
+        const affectedCard = playerField[playerField.length - 1];
+        if (affectedCard.alterValue !== null) {
+          if (affectedCard.ref === 'force' && playerField.length === 1) {
+            affectedCard.alterValue = 1;
+          } else {
+            affectedCard.alterValue = null;
+          }
+        } else {
+          playerField.push(card);
+        }
+        break;
+      }
+      default: {
+        playerField.push(card);
+        break;
+      }
+    }
+
     playerHand.splice(index, 1);
 
     this.gameState.player1Points = Game.calcPoints(this.player1Field);

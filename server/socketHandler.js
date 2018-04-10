@@ -132,7 +132,7 @@ const init = (ioInstance) => {
 
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       if (blade.validateCard(socket.roomJoined, status, data.index)) {
-        blade.playCard(socket.roomJoined, status, data.index, (cardSet, name) => {
+        blade.playCard(socket.roomJoined, status, data.index, data.blastIndex, (cardSet, name) => {
           // socket.emit('playCard', { index: data.index, cardSet });
           io.sockets.in(socket.roomJoined).emit(
             'playCard',

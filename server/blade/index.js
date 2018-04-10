@@ -113,7 +113,7 @@ const pickFromDeck = (roomId, status, callback) => {
   game.pickFromDeck(status, callback);
 };
 
-const playCard = (roomId, status, index, callback) => {
+const playCard = (roomId, status, index, blastIndex, callback) => {
   const game = getGame(roomId);
   const deck = getSingleCardSet(roomId, status);
   const card = deck[index];
@@ -122,7 +122,13 @@ const playCard = (roomId, status, index, callback) => {
     return;
   }
 
-  game.processTurn(status, index, () => {
+  let blast = blastIndex;
+  const opponentStatus = status === 'player1' ? 'player2' : 'player1';
+  if (!blast || !validateCard(roomId, opponentStatus, blast)) {
+    blast = 0;
+  }
+
+  game.processTurn(status, index, blast, () => {
     callback(status, card.ref);
   });
 };
