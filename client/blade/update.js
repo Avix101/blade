@@ -182,7 +182,11 @@ const loadBladeCards = (cardImages) => {
 
 const roomOptions = (data) => {
   if(!inRoom){
-    renderRoomSelection(data.rooms, false);
+    
+    if(pageView === "#blade"){
+      renderRoomSelection(data.rooms, false);
+    }
+    
     setTimeout(() => {
       socket.emit('getRooms');
     }, 10);

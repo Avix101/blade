@@ -11,6 +11,11 @@ const clearCanvas = (canvas, ctx) => {
 };
 
 const displayFrame = () => {
+  
+  if(!viewport){
+    return;
+  }
+  
   clearCanvas(viewport, viewCtx);
   viewCtx.save();
   viewCtx.imageSmoothingEnabled = false;

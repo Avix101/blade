@@ -210,6 +210,11 @@ var clearCanvas = function clearCanvas(canvas, ctx) {
 };
 
 var displayFrame = function displayFrame() {
+
+  if (!viewport) {
+    return;
+  }
+
   clearCanvas(viewport, viewCtx);
   viewCtx.save();
   viewCtx.imageSmoothingEnabled = false;
@@ -394,6 +399,12 @@ var NULL_FUNC = function NULL_FUNC() {};
 var readyToPlay = false;
 var selectedCard = null;
 var mousePos = { x: 0, y: 0 };
+var bladeLink = void 0,
+    instructionsLink = void 0,
+    aboutLink = void 0,
+    feedbackLink = void 0,
+    disclaimerLink = void 0,
+    profileLink = void 0;
 
 var playerStatus = void 0;
 var blastSelect = false;
@@ -413,6 +424,8 @@ var fields = {
   'player2': []
 };
 
+var pageView = void 0;
+
 var aspectRatio = 16 / 9;
 
 //Calculate the appropriate viewport dimensions
@@ -427,14 +440,56 @@ var calcDisplayDimensions = function calcDisplayDimensions() {
 };
 
 var resizeGame = function resizeGame(e) {
-  var dimensions = calcDisplayDimensions();
-  renderGame(dimensions.width, dimensions.height);
+  if (pageView === "#blade") {
+    var dimensions = calcDisplayDimensions();
+    renderGame(dimensions.width, dimensions.height);
+  }
+};
+
+var loadView = function loadView() {
+  var hash = window.location.hash;
+  pageView = hash;
+
+  switch (hash) {
+    case "#blade":
+      {
+        var dimensions = calcDisplayDimensions();
+        renderGame(dimensions.width, dimensions.height);
+        break;
+      }
+    case "#instructions":
+      {
+        renderInstructions();
+        break;
+      }
+    case "#tocs":
+      {
+        renderAbout();
+        break;
+      }
+    case "#feedback":
+      {
+        renderFeedback();
+        break;
+      }
+    case "#profile":
+      {
+        renderProfile();
+        break;
+      }
+    default:
+      {
+        var _dimensions = calcDisplayDimensions();
+        renderGame(_dimensions.width, _dimensions.height);
+        pageView = "#blade";
+        break;
+      }
+  }
 };
 
 var init = function init() {
 
-  var dimensions = calcDisplayDimensions();
-  renderGame(dimensions.width, dimensions.height);
+  loadView();
 
   //Grab static images included in client download
   bladeMat = document.querySelector("#bladeMat");
@@ -470,6 +525,589 @@ window.onload = init;
 
 //Resize the viewport when the window resizes
 window.addEventListener('resize', resizeGame);
+window.addEventListener('hashchange', loadView);
+"use strict";
+
+//Construct the main game window (the canvas)
+var GameWindow = function GameWindow(props) {
+  return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
+};
+
+var renderGame = function renderGame(width, height) {
+  ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
+
+  //Hook up viewport (display canvas) to JS code
+  viewport = document.querySelector("#viewport");
+  viewCtx = viewport.getContext('2d');
+  viewport.addEventListener('mousemove', getMouse);
+  viewport.addEventListener('mouseleave', processMouseLeave);
+  viewport.addEventListener('click', processClick);
+};
+
+var disableDefaultForm = function disableDefaultForm(e) {
+  e.preventDefault();
+  return false;
+};
+
+var RoomWindow = function RoomWindow(props) {
+
+  if (props.renderEmpty) {
+    return React.createElement("div", null);
+  }
+
+  var rooms = props.rooms;
+
+  if (rooms.length === 0) {
+    rooms = [{ id: "No Rooms Available", count: 0 }];
+  };
+
+  var roomOptions = rooms.map(function (room) {
+    var bgColor = "bg-secondary";
+    return React.createElement(
+      "a",
+      { href: "#", className: "list-group-item list-group-item-action " + bgColor,
+        "data-room": room.id, onClick: onRoomSelect },
+      room.id,
+      " ",
+      room.count,
+      "/2"
+    );
+  });
+
+  return React.createElement(
+    "div",
+    { id: "roomSelect" },
+    React.createElement(
+      "h1",
+      null,
+      "Game Select"
+    ),
+    React.createElement("hr", null),
+    React.createElement(
+      "form",
+      {
+        id: "roomForm", name: "roomForm",
+        action: "#room",
+        onSubmit: disableDefaultForm,
+        method: "POST",
+        className: "roomForm"
+      },
+      React.createElement(
+        "fieldset",
+        null,
+        React.createElement(
+          "div",
+          { className: "form-group text-centered" },
+          React.createElement(
+            "button",
+            { onClick: createRoom, className: "btn btn-lg btn-primary" },
+            "Create New Game"
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "form-group" },
+          React.createElement(
+            "div",
+            { className: "input-group" },
+            React.createElement("input", { id: "roomName", type: "text", className: "form-control", placeholder: "roomcode123" }),
+            React.createElement(
+              "span",
+              { className: "input-group-btn" },
+              React.createElement(
+                "button",
+                { onClick: joinRoom, className: "btn btn-lg btn-success" },
+                "Join Game"
+              )
+            )
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "form-group" },
+          React.createElement(
+            "h2",
+            null,
+            "Existing Games"
+          ),
+          React.createElement(
+            "div",
+            { className: "list-group", id: "roomOptions", onClick: onRoomSelect },
+            roomOptions
+          )
+        )
+      )
+    )
+  );
+};
+
+var InstructionsWindow = function InstructionsWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Instructions:"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Want to know how to play Blade? Well, let me help!"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "General Game Rules"
+      ),
+      React.createElement(
+        "ol",
+        null,
+        React.createElement(
+          "li",
+          null,
+          "To start, each player draws a card from their deck. Then, the player with a lower score begins their turn."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "If you play a numbered card, that card will be transfered to your field pile, and its value will be added to your total (special cards behave differently- please see below)."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "Every turn, the current player has to make sure their total value is higher than their opponent's."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "If both players' card values are ever equal (even during the initial draw phase) all current cards are wiped from the field, players start again at 0, and must draw from their decks."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "Effect cards (cards without a number: bolt, mirror, blast, & force) may not be used last. Players with only effect cards remaining (excluding 1s) will lose when it becomes their turn."
+        )
+      ),
+      React.createElement(
+        "h2",
+        null,
+        "Special Cards"
+      ),
+      React.createElement(
+        "ul",
+        { id: "specialCardList" },
+        React.createElement(
+          "li",
+          null,
+          React.createElement(
+            "div",
+            { className: "instructionsCard" },
+            React.createElement("img", { className: "rounded pull-left", src: "/assets/img/cards/06x Bolt.png", alt: "Bolt Card" }),
+            React.createElement(
+              "p",
+              null,
+              "Bolt cards nullify the most recently played card on the opponent's field. For example, if your opponent played a 7 on their last turn, and you played a bolt, your opponent's 7 would be flipped and not counted in their score."
+            )
+          )
+        ),
+        React.createElement(
+          "li",
+          null,
+          React.createElement(
+            "div",
+            { className: "instructionsCard" },
+            React.createElement("img", { className: "rounded pull-left", src: "/assets/img/cards/02x Wand.png", alt: "1 Card" }),
+            React.createElement(
+              "p",
+              null,
+              "1s provide you with an opporunity to recover from a bolt card. If you play a 1 when the top card on your field is turned over, the turned over card will recover. If you play a 1 when the top card isn't turned over, it will act as a regular numbered card."
+            )
+          )
+        ),
+        React.createElement(
+          "li",
+          null,
+          React.createElement(
+            "div",
+            { className: "instructionsCard" },
+            React.createElement("img", { className: "rounded pull-left", src: "/assets/img/cards/04x Mirror.png", alt: "Mirror Card" }),
+            React.createElement(
+              "p",
+              null,
+              "Mirror cards will switch your field pile with your opponent's. This is best used when the point difference between you and your opponent is large."
+            )
+          )
+        ),
+        React.createElement(
+          "li",
+          null,
+          React.createElement(
+            "div",
+            { className: "instructionsCard" },
+            React.createElement("img", { className: "rounded pull-left", src: "/assets/img/cards/02x Blast.png", alt: "Blast Card" }),
+            React.createElement(
+              "p",
+              null,
+              "Blast cards allow you to select one of your opponent's cards and wipe it from their hand. As an additional special rule, when you play a blast card, you keep your turn and get to play another card."
+            )
+          )
+        ),
+        React.createElement(
+          "li",
+          null,
+          React.createElement(
+            "div",
+            { className: "instructionsCard" },
+            React.createElement("img", { className: "rounded pull-left", src: "/assets/img/cards/02x Force.png", alt: "Force Card" }),
+            React.createElement(
+              "p",
+              null,
+              "Force cards double your current field score. (Example: a field score of 19 would be turned into 38). Force cards are placed in your field pile and can be bolted, recovered, and mirrored like regular numbered cards."
+            )
+          )
+        )
+      )
+    )
+  );
+};
+
+var AboutWindow = function AboutWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Trails of Cold Steel"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Check out the original games!"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "ToCS 1"
+      ),
+      React.createElement("img", { className: "banner", src: "/assets/img/tocs1.jpg", alt: "Trails of Cold Steel 1 Banner" }),
+      React.createElement(
+        "p",
+        { className: "lead aboutPara" },
+        "Trails of Cold Steel is a Japanese RPG made by Falcom, and published by XSEED in the US. The first ToCS is the 6th entry in the 'Trails' or 'Kiseki' saga which is part of an even larger series titled \"The Legend of Heroes\". Blade is a recreation of a minigame found in ToCS."
+      ),
+      React.createElement(
+        "p",
+        { className: "lead aboutPara" },
+        "To find out more about the original game and how to purchase a copy for yourself, please visit its Steam store page."
+      ),
+      React.createElement(
+        "div",
+        { className: "text-centered button-div" },
+        React.createElement(
+          "a",
+          { href: "http://store.steampowered.com/app/538680/The_Legend_of_Heroes_Trails_of_Cold_Steel/", target: "_blank" },
+          React.createElement(
+            "button",
+            { className: "btn btn-lg btn-primary" },
+            "ToCS Steam Page"
+          )
+        )
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "ToCS II"
+      ),
+      React.createElement("img", { className: "banner", src: "/assets/img/tocs2.jpg", alt: "Trails of Cold Steel 2 Banner" }),
+      React.createElement(
+        "p",
+        { className: "lead aboutPara" },
+        "The second entry in the Cold Steel arc of the Trails series picks up where the first one left off. It is highly recommended that the games are played in order. Blade exists in both games, but the 'Blast' and 'Force' cards were introduced in ToCS II."
+      ),
+      React.createElement(
+        "p",
+        { className: "lead aboutPara" },
+        "If you're ready to learn more about the second Trails of Cold Steel game, please visit the Steam store page. Be aware that the page contains spoilers for the first game."
+      ),
+      React.createElement(
+        "div",
+        { className: "text-centered button-div" },
+        React.createElement(
+          "a",
+          { href: "http://store.steampowered.com/app/748490/The_Legend_of_Heroes_Trails_of_Cold_Steel_II/", target: "_blank" },
+          React.createElement(
+            "button",
+            { className: "btn btn-lg btn-primary" },
+            "ToCS II Steam Page"
+          )
+        )
+      )
+    )
+  );
+};
+
+var FeedbackWindow = function FeedbackWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Feedback:"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Have something to say about the site? Please let me know!"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "form",
+        {
+          id: "feedbackForm", name: "feedbackForm",
+          action: "/feedback",
+          onSubmit: disableDefaultForm,
+          method: "POST"
+        },
+        React.createElement(
+          "fieldset",
+          null,
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "div",
+              { className: "col-sm-6" },
+              React.createElement(
+                "label",
+                { htmlFor: "name" },
+                "Name:"
+              ),
+              React.createElement("input", { id: "feedbackName", name: "name", type: "text", className: "form-control", placeholder: "Name" })
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-6" },
+              React.createElement(
+                "label",
+                { htmlFor: "contact" },
+                "Contact (Optional):"
+              ),
+              React.createElement("input", { id: "feedbackContact", name: "contact", type: "text", className: "form-control", placeholder: "123@email.com" })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group" },
+            React.createElement("textarea", { id: "feedbackText", name: "feedback", className: "form-control", placeholder: "Feedback..." })
+          ),
+          React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement(
+            "div",
+            { className: "form-group" },
+            React.createElement("input", { type: "submit", id: "feedbackSubmit", value: "Submit Feedback", className: "btn btn-lg btn-success" })
+          )
+        )
+      )
+    )
+  );
+};
+
+var ProfileWindow = function ProfileWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Personal Profile:"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "All about you! Kinda."
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "User Info"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Username: ",
+        username
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Profile Pic:",
+        React.createElement("img", { src: profileImage, alt: "profileImage" })
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Total Games Played: 0"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Wins: 0/0 [Animated Bar Green]"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Losses: 0/0 [Animated Bar Red]"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "Change Password"
+      ),
+      React.createElement(
+        "form",
+        {
+          id: "passwordChangeForm", name: "passwordChangeForm",
+          action: "/changePassword",
+          onSubmit: disableDefaultForm,
+          method: "POST"
+        },
+        React.createElement(
+          "fieldset",
+          null,
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "label",
+              { htmlFor: "newPassword", className: "col-sm-3 col-form-label" },
+              "New Password:"
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-2" },
+              React.createElement("input", { id: "newPassword", name: "newPassword", type: "password", className: "form-control", placeholder: "New Password" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "label",
+              { htmlFor: "newPassword2", className: "col-sm-3 col-form-label" },
+              "Confirm New Password:"
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-2" },
+              React.createElement("input", { id: "newPassword2", name: "newPassword2", type: "password", className: "form-control", placeholder: "Confirm" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "label",
+              { htmlFor: "password", className: "col-sm-3 col-form-label" },
+              "Old Password:"
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-2" },
+              React.createElement("input", { id: "password", name: "password", type: "password", className: "form-control", placeholder: "Old Password" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          ),
+          React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "div",
+              { className: "col-sm-5" },
+              React.createElement("input", { type: "submit", id: "passwordChangeSubmit", value: "Change Password", className: "btn btn-lg btn-warning formSubmit" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          )
+        )
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "Game History"
+      )
+    )
+  );
+};
+
+var clearLeftPane = function clearLeftPane() {
+  ReactDOM.render(React.createElement("div", null), document.querySelector("#room"));
+};
+
+var renderProfile = function renderProfile() {
+  getTokenWithCallback(function (csrfToken) {
+    ReactDOM.render(React.createElement(ProfileWindow, { csrf: csrfToken }), document.querySelector("#main"));
+  });
+
+  clearLeftPane();
+};
+
+var renderFeedback = function renderFeedback() {
+  getTokenWithCallback(function (csrfToken) {
+    ReactDOM.render(React.createElement(FeedbackWindow, { csrf: csrfToken }), document.querySelector("#main"));
+  });
+
+  clearLeftPane();
+};
+
+var renderAbout = function renderAbout() {
+  ReactDOM.render(React.createElement(AboutWindow, null), document.querySelector("#main"));
+  clearLeftPane();
+};
+
+var renderInstructions = function renderInstructions() {
+  ReactDOM.render(React.createElement(InstructionsWindow, null), document.querySelector("#main"));
+
+  clearLeftPane();
+};
+
+var getTokenWithCallback = function getTokenWithCallback(callback) {
+  sendAjax('GET', '/getToken', null, function (result) {
+    if (callback) {
+      callback(result.csrfToken);
+    }
+  });
+};
+
+var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
+  ReactDOM.render(React.createElement(RoomWindow, { rooms: rooms, renderEmpty: renderEmpty }), document.querySelector("#room"));
+};
 "use strict";
 
 var update = function update() {
@@ -667,7 +1305,11 @@ var loadBladeCards = function loadBladeCards(cardImages) {
 
 var roomOptions = function roomOptions(data) {
   if (!inRoom) {
-    renderRoomSelection(data.rooms, false);
+
+    if (pageView === "#blade") {
+      renderRoomSelection(data.rooms, false);
+    }
+
     setTimeout(function () {
       socket.emit('getRooms');
     }, 10);
@@ -1365,159 +2007,42 @@ var foldInCards = function foldInCards(cardCollection, x, y, callback) {
 };
 "use strict";
 
-//Construct the main game window (the canvas)
-var GameWindow = function GameWindow(props) {
-  return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
-};
-
-var renderGame = function renderGame(width, height) {
-  ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
-
-  //Hook up viewport (display canvas) to JS code
-  viewport = document.querySelector("#viewport");
-  viewCtx = viewport.getContext('2d');
-  viewport.addEventListener('mousemove', getMouse);
-  viewport.addEventListener('mouseleave', processMouseLeave);
-  viewport.addEventListener('click', processClick);
-};
-
-var disableDefaultForm = function disableDefaultForm(e) {
-  e.preventDefault();
-  return false;
-};
-
-var RoomWindow = function RoomWindow(props) {
-
-  if (props.renderEmpty) {
-    return React.createElement("div", null);
-  }
-
-  var rooms = props.rooms;
-
-  if (rooms.length === 0) {
-    rooms = [{ id: "No Rooms Available", count: 0 }];
-  };
-
-  var roomOptions = rooms.map(function (room) {
-    var bgColor = "bg-secondary";
-    return React.createElement(
-      "a",
-      { href: "#", className: "list-group-item list-group-item-action " + bgColor,
-        "data-room": room.id, onClick: onRoomSelect },
-      room.id,
-      " ",
-      room.count,
-      "/2"
-    );
-  });
-
-  return React.createElement(
-    "div",
-    { id: "roomSelect" },
-    React.createElement(
-      "h1",
-      null,
-      "Game Select"
-    ),
-    React.createElement("hr", null),
-    React.createElement(
-      "form",
-      {
-        id: "roomForm", name: "roomForm",
-        action: "#room",
-        onSubmit: disableDefaultForm,
-        method: "POST",
-        className: "roomForm"
-      },
-      React.createElement(
-        "fieldset",
-        null,
-        React.createElement(
-          "div",
-          { className: "form-group text-centered" },
-          React.createElement(
-            "button",
-            { onClick: createRoom, className: "btn btn-lg btn-primary" },
-            "Create New Game"
-          )
-        ),
-        React.createElement(
-          "div",
-          { className: "form-group" },
-          React.createElement(
-            "div",
-            { className: "input-group" },
-            React.createElement("input", { id: "roomName", type: "text", className: "form-control", placeholder: "roomcode123" }),
-            React.createElement(
-              "span",
-              { className: "input-group-btn" },
-              React.createElement(
-                "button",
-                { onClick: joinRoom, className: "btn btn-lg btn-success" },
-                "Join Game"
-              )
-            )
-          )
-        ),
-        React.createElement(
-          "div",
-          { className: "form-group" },
-          React.createElement(
-            "h2",
-            null,
-            "Existing Games"
-          ),
-          React.createElement(
-            "div",
-            { className: "list-group", id: "roomOptions", onClick: onRoomSelect },
-            roomOptions
-          )
-        )
-      )
-    )
-  );
-};
-
-var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
-  ReactDOM.render(React.createElement(RoomWindow, { rooms: rooms, renderEmpty: renderEmpty }), document.querySelector("#room"));
-};
-
 var ErrorMessage = function ErrorMessage(props) {
-  return React.createElement(
-    "div",
-    { className: "alert alert-dismissible alert-danger" },
-    React.createElement(
-      "a",
-      { href: "#", className: "close", "data-dismiss": "alert" },
-      "\xD7"
-    ),
-    "Error: ",
-    props.message
-  );
+	return React.createElement(
+		"div",
+		{ className: "alert alert-dismissible alert-danger" },
+		React.createElement(
+			"a",
+			{ href: "#", className: "close", "data-dismiss": "alert" },
+			"\xD7"
+		),
+		"Error: ",
+		props.message
+	);
 };
 
 var handleError = function handleError(message) {
-  //$("#errorMessage").text(message);
-  //$("#errorMessage").animate({ width: 'toggle' }, 350);
-  ReactDOM.render(React.createElement(ErrorMessage, { message: message }), document.querySelector("#errorMessage"));
+	//$("#errorMessage").text(message);
+	//$("#errorMessage").animate({ width: 'toggle' }, 350);
+	ReactDOM.render(React.createElement(ErrorMessage, { message: message }), document.querySelector("#errorMessage"));
 };
 
 var redirect = function redirect(response) {
-  //$("#domoMessage").animate({ width: 'hide' }, 350);
-  window.location = response.redirect;
+	//$("#domoMessage").animate({ width: 'hide' }, 350);
+	window.location = response.redirect;
 };
 
 var sendAjax = function sendAjax(type, action, data, success) {
-  $.ajax({
-    cache: false,
-    type: type,
-    url: action,
-    data: data,
-    dataType: "json",
-    success: success,
-    error: function error(xhr, status, _error) {
-      var messageObj = JSON.parse(xhr.responseText);
-      handleError(messageObj.error);
-    }
-  });
+	$.ajax({
+		cache: false,
+		type: type,
+		url: action,
+		data: data,
+		dataType: "json",
+		success: success,
+		error: function error(xhr, status, _error) {
+			var messageObj = JSON.parse(xhr.responseText);
+			handleError(messageObj.error);
+		}
+	});
 };

@@ -44,3 +44,32 @@ body, html {
   display: flex;
   align-items: center;
 }
+
+.moveDown {
+  margin-top: 50px;
+}
+
+.instructionsCard img{
+  width: 90px;
+  height: 119px;
+  display: inline-block
+}
+
+.instructionsCard p {
+  vertical-align: middle;
+  display: inline-block;
+  max-width: 75%;
+  margin-left: 5%;
+}
+
+#specialCardList li{
+  margin-top: 10px;
+}
+
+.banner{
+  max-width: 100%;
+}
+
+.aboutPara{
+  margin-top: 10px;
+}

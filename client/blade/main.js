@@ -8,6 +8,7 @@ const NULL_FUNC = () => {};
 let readyToPlay = false;
 let selectedCard = null;
 let mousePos = {x: 0, y: 0};
+let bladeLink, instructionsLink, aboutLink, feedbackLink, disclaimerLink, profileLink
 
 let playerStatus;
 let blastSelect = false;
@@ -27,6 +28,8 @@ let fields = {
   'player2': [],
 };
 
+let pageView;
+
 const aspectRatio = 16 / 9;
 
 //Calculate the appropriate viewport dimensions
@@ -41,14 +44,50 @@ const calcDisplayDimensions = () => {
 }
 
 const resizeGame = (e) => {
-  const dimensions = calcDisplayDimensions();
-  renderGame(dimensions.width, dimensions.height);
+  if(pageView === "#blade"){
+    const dimensions = calcDisplayDimensions();
+    renderGame(dimensions.width, dimensions.height);
+  }
 }
+
+const loadView = () => {
+  const hash = window.location.hash;
+  pageView = hash;
+  
+  switch(hash){
+    case "#blade": {
+      const dimensions = calcDisplayDimensions();
+      renderGame(dimensions.width, dimensions.height);
+      break;
+    }
+    case "#instructions": {
+      renderInstructions();
+      break;
+    }
+    case "#tocs": {
+      renderAbout();
+      break;
+    }
+    case "#feedback": {
+      renderFeedback();
+      break;
+    }
+    case "#profile": {
+      renderProfile();
+      break;
+    }
+    default: {
+      const dimensions = calcDisplayDimensions();
+      renderGame(dimensions.width, dimensions.height);
+      pageView = "#blade";
+      break;
+    }
+  }
+};
 
 const init = () => {
   
-  const dimensions = calcDisplayDimensions();
-  renderGame(dimensions.width, dimensions.height);
+  loadView();
   
   //Grab static images included in client download
   bladeMat = document.querySelector("#bladeMat");
@@ -84,3 +123,4 @@ window.onload = init;
 
 //Resize the viewport when the window resizes
 window.addEventListener('resize', resizeGame);
+window.addEventListener('hashchange', loadView);

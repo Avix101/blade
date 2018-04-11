@@ -35,8 +35,12 @@ const getDeck = (roomId, deckType) => {
 };
 
 const getGameState = (roomId) => {
-  const game = getGame(roomId);
-  return game.getGameState();
+  if (gameExists(roomId)) {
+    const game = getGame(roomId);
+    return game.getGameState();
+  }
+
+  return null;
 };
 
 const getSingleCardSet = (roomId, type) => {
