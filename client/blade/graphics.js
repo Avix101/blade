@@ -124,6 +124,23 @@ const drawGameResult = () => {
   prepCtx.restore();
 };
 
+const drawWaitingOverlay = () => {
+  prepCtx.save();
+  prepCtx.globalAlpha = 0.7;
+  prepCtx.fillStyle = "black";
+  prepCtx.fillRect(0, 0, prepCanvas.width, prepCanvas.height);
+  
+  prepCtx.globalAlpha = 1;
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  
+  prepCtx.fillStyle = "white";
+  prepCtx.fillText("Waiting for opponent...", prepCanvas.width / 2, prepCanvas.height / 2);
+  
+  prepCtx.restore();
+};
+
 const draw = () => {
   clearCanvas(prepCanvas, prepCtx);
   
@@ -170,6 +187,10 @@ const draw = () => {
     drawGameResult();
   } else {
     drawTurnIndicator();
+  }
+  
+  if(gameState.waiting){
+    drawWaitingOverlay();
   }
   
   displayFrame();

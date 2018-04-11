@@ -41,6 +41,10 @@ const init = (ioInstance) => {
 
     socket.emit('loadBladeCards', blade.getCardImages());
 
+    socket.on('getRooms', () => {
+      socket.emit('roomOptions', { rooms: roomHandler.getRooms() });
+    });
+
     socket.on('createRoom', () => {
       if (roomHandler.createRoom(socket.hash)) {
         if (roomHandler.joinRoom(socket.hash, socket)) {
@@ -116,9 +120,11 @@ const init = (ioInstance) => {
       }
 
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
-      blade.pickFromDeck(socket.roomJoined, status, (card) => {
+      if (blade.pickFromDeck(socket.roomJoined, status, (card) => {
         io.sockets.in(socket.roomJoined).emit('pickFromDeck', { player: status, card });
-      });
+      })) {
+        socket.emit('turnAccepted');
+      }
     });
 
     socket.on('playCard', (data) => {
@@ -132,13 +138,34 @@ const init = (ioInstance) => {
 
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       if (blade.validateCard(socket.roomJoined, status, data.index)) {
-        blade.playCard(socket.roomJoined, status, data.index, data.blastIndex, (cardSet, name) => {
+        if (blade.playCard(
+          socket.roomJoined, status, data.index, data.blastIndex,
+          (cardSet, name, blastIndex) => {
           // socket.emit('playCard', { index: data.index, cardSet });
-          io.sockets.in(socket.roomJoined).emit(
-            'playCard',
-            { index: data.index, cardSet, name },
-          );
-        });
+            io.sockets.in(socket.roomJoined).emit(
+              'playCard',
+              {
+                index: data.index, cardSet, name, blastIndex,
+              },
+            );
+          },
+        )) {
+          socket.emit('turnAccepted');
+        }
+      }
+    });
+
+    socket.on('disconnect', () => {
+      const roomId = socket.roomJoined;
+      const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
+      if (roomHandler.leaveRoom(socket.roomJoined, socket)) {
+        if (blade.gameExists(socket.roomJoined)) {
+          blade.resolveDisconnect(roomId, status, () => {
+            const gameState = blade.getGameState(roomId);
+            blade.killGame(roomId);
+            io.sockets.in(roomId).emit('gamestate', gameState);
+          });
+        }
       }
     });
   });

@@ -24,6 +24,10 @@ const AccountSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  profile_name: {
+    type: String,
+    required: true,
+  },
   createdDate: {
     type: Date,
     default: Date.now,
@@ -32,6 +36,7 @@ const AccountSchema = new mongoose.Schema({
 
 AccountSchema.statics.toAPI = doc => ({
   username: doc.username,
+  profile_name: doc.profile_name,
   _id: doc._id,
 });
 

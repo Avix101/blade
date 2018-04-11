@@ -307,6 +307,23 @@ var drawGameResult = function drawGameResult() {
   prepCtx.restore();
 };
 
+var drawWaitingOverlay = function drawWaitingOverlay() {
+  prepCtx.save();
+  prepCtx.globalAlpha = 0.7;
+  prepCtx.fillStyle = "black";
+  prepCtx.fillRect(0, 0, prepCanvas.width, prepCanvas.height);
+
+  prepCtx.globalAlpha = 1;
+  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+
+  prepCtx.fillStyle = "white";
+  prepCtx.fillText("Waiting for opponent...", prepCanvas.width / 2, prepCanvas.height / 2);
+
+  prepCtx.restore();
+};
+
 var draw = function draw() {
   clearCanvas(prepCanvas, prepCtx);
 
@@ -355,6 +372,10 @@ var draw = function draw() {
     drawTurnIndicator();
   }
 
+  if (gameState.waiting) {
+    drawWaitingOverlay();
+  }
+
   displayFrame();
 };
 'use strict';
@@ -375,12 +396,16 @@ var selectedCard = null;
 var mousePos = { x: 0, y: 0 };
 
 var playerStatus = void 0;
+var blastSelect = false;
+var playerBlastCard = void 0;
+var inRoom = false;
 var gameState = {
   turnType: "pickFromDeck",
   turnOwner: null,
   player1Points: 0,
   player2Points: 0,
-  winner: null
+  winner: null,
+  waiting: false
 };
 
 var fields = {
@@ -392,7 +417,7 @@ var aspectRatio = 16 / 9;
 
 //Calculate the appropriate viewport dimensions
 var calcDisplayDimensions = function calcDisplayDimensions() {
-  var width = window.innerWidth * 0.8;
+  var width = window.innerWidth * 0.6;
   var height = width / aspectRatio;
 
   return {
@@ -431,6 +456,7 @@ var init = function init() {
   socket.on('sortDeck', sortDeck);
   socket.on('pickFromDeck', pickFromDeck);
   socket.on('playCard', playCard);
+  socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
 
   //Eventually switch to server call to load cards
@@ -448,22 +474,48 @@ window.addEventListener('resize', resizeGame);
 
 var update = function update() {
 
-  checkCardCollisions();
+  if (blastSelect) {
+    checkCardCollisions(getOpponentHand(), false);
+  } else {
+    checkCardCollisions(getPlayerHand(), true);
+  }
   draw();
 
   animationFrame = requestAnimationFrame(update);
 };
 
 var processClick = function processClick(e) {
-  if (selectedCard && !gameState.winner) {
-    unselectCard(selectedCard);
+  if (selectedCard && !gameState.winner && !gameState.waiting) {
     switch (gameState.turnType) {
       case "pickFromDeck":
+        unselectCard(selectedCard);
         socket.emit('pickFromDeck');
         selectedCard = null;
         break;
       case "playCard":
         var playerHand = getPlayerHand();
+
+        if (selectedCard.name === "blast" && !blastSelect) {
+          blastSelect = true;
+          playerBlastCard = selectedCard;
+          selectedCard = null;
+          updateReadyStatus(false);
+          return;
+        } else if (blastSelect) {
+          blastSelect = false;
+          var opponentHand = getOpponentHand();
+          socket.emit('playCard', {
+            index: playerHand.indexOf(playerBlastCard),
+            blastIndex: opponentHand.indexOf(selectedCard)
+          });
+
+          selectedCard = null;
+          playerBlastCard = null;
+          updateReadyStatus(false);
+          return;
+        }
+
+        unselectCard(selectedCard);
         socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
         selectedCard = null;
         updateReadyStatus(false);
@@ -513,20 +565,23 @@ var rotatePoint = function rotatePoint(point, anchor, radians) {
   return { x: newX + anchor.x, y: newY + anchor.y };
 };
 
-var checkCardCollisions = function checkCardCollisions() {
-  if (!readyToPlay || gameState.winner !== null) {
+var checkCardCollisions = function checkCardCollisions(cardCollection, selectPlayer) {
+  if (!readyToPlay || gameState.winner !== null || gameState.waiting) {
     return;
   }
 
-  var playerHand = getPlayerHand();
-
   if (gameState.turnType === "pickFromDeck") {
-    playerHand = [getTopDeckCard()];
+    var topCard = getTopDeckCard();
+    if (topCard) {
+      cardCollection = [topCard];
+    } else {
+      cardCollection = [];
+    }
   }
 
   var newSelection = null;
-  for (var i = 0; i < playerHand.length; i++) {
-    var card = playerHand[i];
+  for (var i = 0; i < cardCollection.length; i++) {
+    var card = cardCollection[i];
 
     var cardCenter = { x: card.x + card.width / 2, y: card.y + card.height / 2 };
     var rotatedPoint = rotatePoint(mousePos, cardCenter, card.radians);
@@ -543,7 +598,7 @@ var checkCardCollisions = function checkCardCollisions() {
     }
 
     selectedCard = newSelection;
-    selectCard(selectedCard, true, NULL_FUNC);
+    selectCard(selectedCard, selectPlayer, NULL_FUNC);
   } else if (!newSelection && selectedCard !== null) {
     unselectCard(selectedCard, NULL_FUNC);
     selectedCard = null;
@@ -611,14 +666,17 @@ var loadBladeCards = function loadBladeCards(cardImages) {
 };
 
 var roomOptions = function roomOptions(data) {
-  console.log(data);
-  renderRoomSelection(data.rooms, false);
+  if (!inRoom) {
+    renderRoomSelection(data.rooms, false);
+    setTimeout(function () {
+      socket.emit('getRooms');
+    }, 10);
+  }
 };
 
 var onRoomSelect = function onRoomSelect(e) {
   var roomId = document.querySelector("#roomName");
-  var select = document.querySelector("#roomOptions");
-  roomId.value = select.options[select.selectedIndex].value;
+  roomId.value = e.target.getAttribute('data-room');
 };
 
 var createRoom = function createRoom(e) {
@@ -632,6 +690,26 @@ var joinRoom = function joinRoom(e) {
 
 var roomJoined = function roomJoined(data) {
   playerStatus = data.status;
+  inRoom = true;
+
+  var subDeckKeys = Object.keys(deck);
+  for (var i = 0; i < subDeckKeys.length; i++) {
+    var key = subDeckKeys[i];
+    deck[key] = [];
+  }
+
+  fields = {
+    'player1': [],
+    'player2': []
+  };
+
+  gameState.turnType = "pickFromDeck";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
+
   renderRoomSelection([], true);
 };
 
@@ -742,6 +820,14 @@ var getPlayerHand = function getPlayerHand() {
   }
 };
 
+var getOpponentHand = function getOpponentHand() {
+  if (playerStatus === 'player1') {
+    return deck.player2;
+  } else if (playerStatus === 'player2') {
+    return deck.player1;
+  }
+};
+
 var getPlayerPoints = function getPlayerPoints() {
   if (playerStatus === 'player1') {
     return gameState.player1Points;
@@ -809,6 +895,7 @@ var sortDeck = function sortDeck(data) {
 
 var pickFromDeck = function pickFromDeck(data) {
   var player = data.player;
+  gameState.waiting = false;
 
   if (playerStatus === player) {
     var playerDeck = getPlayerDeck();
@@ -869,9 +956,17 @@ var spliceOpponentCard = function spliceOpponentCard(cardSet, index) {
   });
 };
 
+var turnAccepted = function turnAccepted() {
+  gameState.waiting = true;
+};
+
 var playCard = function playCard(data) {
   var cardSet = deck[data.cardSet];
   var card = cardSet[data.index];
+
+  console.log(data);
+
+  gameState.waiting = false;
 
   if (selectedCard === card) {
     unselectCard(selectedCard);
@@ -904,6 +999,15 @@ var playCard = function playCard(data) {
           fields['player1'] = temp;
           stackCards(fields['player1'], false, 500);
           stackCards(fields['player2'], true, 500);
+        }
+        break;
+      case "blast":
+        if (data.blastIndex > -1) {
+          selectCard(card, true, function () {
+            var opponentHand = getOpponentHand();
+            spliceOpponentCard(opponentHand, data.blastIndex);
+            splicePlayerCard(cardSet, data.index);
+          });
         }
         break;
       case "1":
@@ -963,6 +1067,17 @@ var playCard = function playCard(data) {
           });
         });
         break;
+      case "blast":
+        if (data.blastIndex > -1) {
+          selectCard(card, false, function () {
+            startCardFlip([card], false, function () {
+              var playerHand = getPlayerHand();
+              spliceOpponentCard(cardSet, data.index);
+              splicePlayerCard(playerHand, data.blastIndex);
+            });
+          });
+        }
+        break;
       case "1":
         var _opponentField = getOpponentField();
         var _affectedCard = _opponentField[_opponentField.length - 1];
@@ -991,8 +1106,21 @@ var playCard = function playCard(data) {
   }
 };
 
+var endGame = function endGame() {
+  readyToPlay = false;
+  selectedCard = null;
+  playerBlastCard = null;
+
+  inRoom = false;
+  blastSelect = false;
+
+  roomOptions({ rooms: [] });
+};
+
 var updateGamestate = function updateGamestate(data) {
   var keys = Object.keys(data);
+
+  gameState.waiting = false;
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
@@ -1001,6 +1129,10 @@ var updateGamestate = function updateGamestate(data) {
 
   if (gameState.clearFields === true) {
     clearFields();
+  }
+
+  if (gameState.winner !== null) {
+    endGame();
   }
 
   updateReadyStatus(false);
@@ -1249,16 +1381,29 @@ var renderGame = function renderGame(width, height) {
   viewport.addEventListener('click', processClick);
 };
 
+var disableDefaultForm = function disableDefaultForm(e) {
+  e.preventDefault();
+  return false;
+};
+
 var RoomWindow = function RoomWindow(props) {
 
   if (props.renderEmpty) {
     return React.createElement("div", null);
   }
 
-  var roomOptions = props.rooms.map(function (room) {
+  var rooms = props.rooms;
+
+  if (rooms.length === 0) {
+    rooms = [{ id: "No Rooms Available", count: 0 }];
+  };
+
+  var roomOptions = rooms.map(function (room) {
+    var bgColor = "bg-secondary";
     return React.createElement(
-      "option",
-      { value: room.id },
+      "a",
+      { href: "#", className: "list-group-item list-group-item-action " + bgColor,
+        "data-room": room.id, onClick: onRoomSelect },
       room.id,
       " ",
       room.count,
@@ -1270,28 +1415,65 @@ var RoomWindow = function RoomWindow(props) {
     "div",
     { id: "roomSelect" },
     React.createElement(
-      "p",
+      "h1",
       null,
-      React.createElement(
-        "button",
-        { onClick: createRoom },
-        "Create Room"
-      )
+      "Game Select"
     ),
+    React.createElement("hr", null),
     React.createElement(
-      "p",
-      null,
-      React.createElement("input", { id: "roomName", type: "text" }),
+      "form",
+      {
+        id: "roomForm", name: "roomForm",
+        action: "#room",
+        onSubmit: disableDefaultForm,
+        method: "POST",
+        className: "roomForm"
+      },
       React.createElement(
-        "button",
-        { onClick: joinRoom },
-        "Join Room"
+        "fieldset",
+        null,
+        React.createElement(
+          "div",
+          { className: "form-group text-centered" },
+          React.createElement(
+            "button",
+            { onClick: createRoom, className: "btn btn-lg btn-primary" },
+            "Create New Game"
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "form-group" },
+          React.createElement(
+            "div",
+            { className: "input-group" },
+            React.createElement("input", { id: "roomName", type: "text", className: "form-control", placeholder: "roomcode123" }),
+            React.createElement(
+              "span",
+              { className: "input-group-btn" },
+              React.createElement(
+                "button",
+                { onClick: joinRoom, className: "btn btn-lg btn-success" },
+                "Join Game"
+              )
+            )
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "form-group" },
+          React.createElement(
+            "h2",
+            null,
+            "Existing Games"
+          ),
+          React.createElement(
+            "div",
+            { className: "list-group", id: "roomOptions", onClick: onRoomSelect },
+            roomOptions
+          )
+        )
       )
-    ),
-    React.createElement(
-      "select",
-      { id: "roomOptions", onClick: onRoomSelect },
-      roomOptions
     )
   );
 };

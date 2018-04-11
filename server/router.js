@@ -22,6 +22,7 @@ const attach = (app) => {
   app.get('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
   app.post('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.login);
   app.post('/signup', mid.requiresSecure, mid.requiresLogout, controllers.Account.signup);
+  app.get('/getProfiles', mid.requiresSecure, mid.requiresLogout, controllers.Blade.getAllProfilePics);
   app.get('/logout', mid.requiresLogin, controllers.Account.logout);
   app.get('/blade', mid.requiresLogin, controllers.Blade.main);
   app.get('/', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);

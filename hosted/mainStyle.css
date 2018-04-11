@@ -17,10 +17,30 @@ body, html {
   text-align: center;
 }
 
+#roomOptions {
+  max-height: 200px;
+  overflow: auto;
+}
+
 .row-centered {
   align-content: center;
 }
 
 .formSubmit {
  width: 100%; 
+}
+
+#appContainer {
+  max-width: 95%;
+}
+
+.input-group-btn button {
+  border-bottom-left-radius: 0px;
+  border-top-left-radius: 0px;
+}
+
+.vertical-center {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
 }

@@ -1,4 +1,5 @@
 const models = require('../models');
+const profilePics = require('./profiles.js');
 
 const { Account } = models;
 
@@ -41,6 +42,7 @@ const signup = (request, response) => {
   req.body.username = `${req.body.username}`;
   req.body.pass = `${req.body.pass}`;
   req.body.pass2 = `${req.body.pass2}`;
+  req.body.profile_name = `${req.body.profile_name}`;
 
   if (!req.body.username || !req.body.pass || !req.body.pass2) {
     return res.status(400).json({ error: 'All fields are required' });
@@ -50,11 +52,16 @@ const signup = (request, response) => {
     return res.status(400).json({ error: 'Passwords do not match' });
   }
 
+  if (!profilePics[req.body.profile_name]) {
+    return res.status(400).json({ error: 'Profile icon not accepted' });
+  }
+
   return Account.AccountModel.generateHash(req.body.pass, (salt, hash) => {
     const accountData = {
       username: req.body.username,
       salt,
       password: hash,
+      profile_name: req.body.profile_name,
     };
 
     const newAccount = new Account.AccountModel(accountData);

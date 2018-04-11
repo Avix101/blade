@@ -19,28 +19,62 @@ const renderGame = (width, height) => {
   viewport.addEventListener('click', processClick);
 };
 
+const disableDefaultForm = (e) => {
+  e.preventDefault();
+  return false;
+};
+
 const RoomWindow = (props) => {
   
   if(props.renderEmpty){
     return (<div></div>);
   }
   
-  const roomOptions = props.rooms.map((room) => {
-    return <option value={room.id}>{room.id} {room.count}/2</option>
+  let rooms = props.rooms;
+  
+  if(rooms.length === 0){
+    rooms = [{id: "No Rooms Available", count: 0}];
+  };
+  
+  const roomOptions = rooms.map((room) => {
+    const bgColor = "bg-secondary";
+    return (
+      <a href="#" className={`list-group-item list-group-item-action ${bgColor}`}
+        data-room={room.id} onClick={onRoomSelect}>{room.id} {room.count}/2</a>
+    );
   });
   
   return (
     <div id="roomSelect">
-      <p>
-        <button onClick={createRoom}>Create Room</button>
-      </p>
-      <p>
-        <input id="roomName" type="text" />
-        <button onClick={joinRoom}>Join Room</button>
-      </p>
-      <select id="roomOptions" onClick={onRoomSelect}>
-        {roomOptions}
-      </select>
+      <h1>Game Select</h1>
+      <hr />
+      <form
+        id="roomForm" name="roomForm"
+        action="#room"
+        onSubmit={disableDefaultForm}
+        method="POST"
+        className="roomForm"
+      >
+        <fieldset>
+          <div className="form-group text-centered">
+            <button onClick={createRoom} className="btn btn-lg btn-primary">Create New Game</button>
+          </div>
+          <div className="form-group">
+            <div className="input-group">
+              <input id="roomName" type="text" className="form-control" placeholder="roomcode123" />
+              <span className="input-group-btn">
+                <button onClick={joinRoom} className="btn btn-lg btn-success">Join Game</button>
+              </span>
+            </div>
+          </div>
+          <div className="form-group">
+            <h2>Existing Games</h2>
+            <div className="list-group" id="roomOptions" onClick={onRoomSelect}>
+              {roomOptions}
+            </div>
+          </div>
+        </fieldset>
+      </form>
     </div>
   );
 };

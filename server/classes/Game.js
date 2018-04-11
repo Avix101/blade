@@ -59,6 +59,10 @@ class Game {
     }
   }
 
+  checkReadyStatus() {
+    return this.playerReady.player1 && this.playerReady.player2;
+  }
+
   allocateCards(numPerPlayer) {
     for (let i = 0; i < numPerPlayer; i++) {
       const randIndex1 = Math.floor(Math.random() * this.deck.length);
@@ -225,6 +229,16 @@ class Game {
     }, 50);
   }
 
+  resolveEarly(loser, callback) {
+    this.resolveGame(loser);
+
+    this.updateQueue = [];
+
+    if (callback) {
+      callback();
+    }
+  }
+
   checkPoints(status) {
     const playerPoints = status === 'player1' ?
       this.gameState.player1Points :
@@ -252,7 +266,7 @@ class Game {
 
   processTurn(status, index, blastIndex, callback) {
     if (this.gameState.turnType !== 'playCard') {
-      return;
+      return false;
     }
 
     const playerHand = status === 'player1' ? this.getPlayer1Cards() : this.getPlayer2Cards();
@@ -279,6 +293,7 @@ class Game {
         break;
       }
       case 'blast': {
+        console.log(opponentHand[blastIndex]);
         opponentHand.splice(blastIndex, 1);
         break;
       }
@@ -303,10 +318,14 @@ class Game {
 
     playerHand.splice(index, 1);
 
-    this.gameState.player1Points = Game.calcPoints(this.player1Field);
-    this.gameState.player2Points = Game.calcPoints(this.player2Field);
+    if (card.ref !== 'blast') {
+      this.gameState.player1Points = Game.calcPoints(this.player1Field);
+      this.gameState.player2Points = Game.calcPoints(this.player2Field);
 
-    this.checkPoints(status);
+      this.checkPoints(status);
+    }
+
+    const waiting = !this.checkReadyStatus();
 
     this.queueUpdate(() => {
       callback();
@@ -317,18 +336,20 @@ class Game {
         this.resetClearFlag();
       });
     });
+
+    return waiting;
   }
 
   pickFromDeck(status, callback) {
     if (this.gameState.turnType !== 'pickFromDeck') {
-      return;
+      return false;
     }
 
     const playerDeck = status === 'player1' ? this.getPlayer1Deck() : this.getPlayer2Deck();
     const playerField = status === 'player1' ? this.player1Field : this.player2Field;
 
     if (!this.allowInput[status]) {
-      return;
+      return false;
     }
 
     this.allowInput[status] = false;
@@ -350,6 +371,8 @@ class Game {
       this.pickStartingPlayer();
     }
 
+    const waiting = !this.checkReadyStatus();
+
     this.queueUpdate(() => {
       callback(card);
     });
@@ -359,6 +382,8 @@ class Game {
         this.resetClearFlag();
       });
     });
+
+    return waiting;
   }
 
   static sortDeck(cardCollection) {

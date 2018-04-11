@@ -105,12 +105,13 @@ const validateCard = (roomId, status, index) => {
   if (index >= 0 && index < deck.length) {
     return true;
   }
+  console.log('invalid card');
   return false;
 };
 
 const pickFromDeck = (roomId, status, callback) => {
   const game = getGame(roomId);
-  game.pickFromDeck(status, callback);
+  return game.pickFromDeck(status, callback);
 };
 
 const playCard = (roomId, status, index, blastIndex, callback) => {
@@ -119,7 +120,7 @@ const playCard = (roomId, status, index, blastIndex, callback) => {
   const card = deck[index];
 
   if (game.getTurnOwner() !== status) {
-    return;
+    return false;
   }
 
   let blast = blastIndex;
@@ -128,9 +129,18 @@ const playCard = (roomId, status, index, blastIndex, callback) => {
     blast = 0;
   }
 
-  game.processTurn(status, index, blast, () => {
-    callback(status, card.ref);
+  return game.processTurn(status, index, blast, () => {
+    callback(status, card.ref, blast);
   });
+};
+
+const resolveDisconnect = (roomId, status, callback) => {
+  const game = getGame(roomId);
+  game.resolveEarly(status, callback);
+};
+
+const killGame = (roomId) => {
+  delete games[roomId];
 };
 
 const playerReady = (roomId, status, ready) => {
@@ -154,4 +164,6 @@ module.exports = {
   pickFromDeck,
   playCard,
   playerReady,
+  resolveDisconnect,
+  killGame,
 };

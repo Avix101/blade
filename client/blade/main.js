@@ -10,12 +10,16 @@ let selectedCard = null;
 let mousePos = {x: 0, y: 0};
 
 let playerStatus;
+let blastSelect = false;
+let playerBlastCard;
+let inRoom = false;
 const gameState = {
   turnType: "pickFromDeck",
   turnOwner: null,
   player1Points: 0,
   player2Points: 0,
   winner: null,
+  waiting: false,
 };
 
 let fields = {
@@ -27,7 +31,7 @@ const aspectRatio = 16 / 9;
 
 //Calculate the appropriate viewport dimensions
 const calcDisplayDimensions = () => {
-  const width = window.innerWidth * 0.8;
+  const width = window.innerWidth * 0.6;
   const height = width / aspectRatio;
   
   return {
@@ -66,6 +70,7 @@ const init = () => {
   socket.on('sortDeck', sortDeck);
   socket.on('pickFromDeck', pickFromDeck);
   socket.on('playCard', playCard);
+  socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
   
   //Eventually switch to server call to load cards

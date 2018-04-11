@@ -1,21 +1,47 @@
 const update = () => {
   
-  checkCardCollisions();
+  if(blastSelect){
+    checkCardCollisions(getOpponentHand(), false);
+  } else {
+    checkCardCollisions(getPlayerHand(), true);
+  }
   draw();
   
   animationFrame = requestAnimationFrame(update);
 };
 
 const processClick = (e) => {
-  if(selectedCard && !gameState.winner){
-    unselectCard(selectedCard);
+  if(selectedCard && !gameState.winner && !gameState.waiting){
     switch(gameState.turnType){
       case "pickFromDeck":
+        unselectCard(selectedCard);
         socket.emit('pickFromDeck');
         selectedCard = null;
         break;    
       case "playCard":
         const playerHand = getPlayerHand();
+        
+        if(selectedCard.name === "blast" && !blastSelect){
+          blastSelect = true;
+          playerBlastCard = selectedCard;
+          selectedCard = null;
+          updateReadyStatus(false);
+          return;
+        } else if (blastSelect){
+          blastSelect = false;
+          const opponentHand = getOpponentHand();
+          socket.emit('playCard', { 
+            index: playerHand.indexOf(playerBlastCard),
+            blastIndex: opponentHand.indexOf(selectedCard)
+          });
+          
+          selectedCard = null;
+          playerBlastCard = null;
+          updateReadyStatus(false);
+          return;
+        }
+      
+        unselectCard(selectedCard);
         socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
         selectedCard = null;
         updateReadyStatus(false);
@@ -65,20 +91,23 @@ const rotatePoint = (point, anchor, radians) => {
   return {x: newX + anchor.x, y: newY + anchor.y};
 };
 
-const checkCardCollisions = () => {
-  if(!readyToPlay || gameState.winner !== null){
+const checkCardCollisions = (cardCollection, selectPlayer) => {
+  if(!readyToPlay || gameState.winner !== null || gameState.waiting){
     return;
   }
   
-  let playerHand = getPlayerHand();
-  
   if(gameState.turnType === "pickFromDeck"){
-    playerHand = [getTopDeckCard()];
+    const topCard = getTopDeckCard();
+    if(topCard){
+      cardCollection = [topCard];
+    } else {
+      cardCollection = [];
+    } 
   }
   
   let newSelection = null;
-  for(let i = 0; i < playerHand.length; i++){
-    const card = playerHand[i];
+  for(let i = 0; i < cardCollection.length; i++){
+    const card = cardCollection[i];
     
     const cardCenter = {x: card.x + (card.width / 2), y: card.y + (card.height / 2)};
     const rotatedPoint = rotatePoint(mousePos, cardCenter, card.radians);
@@ -95,7 +124,7 @@ const checkCardCollisions = () => {
     }
     
     selectedCard = newSelection;
-    selectCard(selectedCard, true, NULL_FUNC);
+    selectCard(selectedCard, selectPlayer, NULL_FUNC);
   } else if(!newSelection && selectedCard !== null) {
     unselectCard(selectedCard, NULL_FUNC);
     selectedCard = null;
@@ -152,14 +181,17 @@ const loadBladeCards = (cardImages) => {
 };
 
 const roomOptions = (data) => {
-  console.log(data);
-  renderRoomSelection(data.rooms, false);
+  if(!inRoom){
+    renderRoomSelection(data.rooms, false);
+    setTimeout(() => {
+      socket.emit('getRooms');
+    }, 10);
+  }
 };
 
 const onRoomSelect = (e) => {
   const roomId = document.querySelector("#roomName");
-  const select = document.querySelector("#roomOptions");
-  roomId.value = select.options[select.selectedIndex].value;
+  roomId.value = e.target.getAttribute('data-room');
 };
 
 const createRoom = (e) => {
@@ -173,6 +205,26 @@ const joinRoom = (e) => {
 
 const roomJoined = (data) => {
   playerStatus = data.status;
+  inRoom = true;
+  
+  const subDeckKeys = Object.keys(deck);
+  for(let i = 0; i < subDeckKeys.length; i++){
+    const key = subDeckKeys[i];
+    deck[key] = [];
+  }
+  
+  fields = {
+    'player1': [],
+    'player2': [],
+  };
+  
+  gameState.turnType = "pickFromDeck";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
+  
   renderRoomSelection([], true);
 }
 
@@ -285,6 +337,14 @@ const getPlayerHand = () => {
   }
 };
 
+const getOpponentHand = () => {
+  if(playerStatus === 'player1'){
+    return deck.player2;
+  } else if(playerStatus === 'player2'){
+    return deck.player1;
+  }
+};
+
 const getPlayerPoints = () => {
   if(playerStatus === 'player1'){
     return gameState.player1Points;
@@ -369,6 +429,7 @@ const sortDeck = (data) => {
 
 const pickFromDeck = (data) => {
   const player = data.player;
+  gameState.waiting = false;
   
   if(playerStatus === player){
     const playerDeck = getPlayerDeck();
@@ -429,9 +490,17 @@ const spliceOpponentCard = (cardSet, index) => {
   });
 };
 
+const turnAccepted = () => {
+  gameState.waiting = true;
+}
+
 const playCard = (data) => {
   const cardSet = deck[data.cardSet];
   const card = cardSet[data.index];
+  
+  console.log(data);
+  
+  gameState.waiting = false;
   
   if(selectedCard === card){
     unselectCard(selectedCard);
@@ -464,6 +533,15 @@ const playCard = (data) => {
           fields['player1'] = temp;
           stackCards(fields['player1'], false, 500);
           stackCards(fields['player2'], true, 500);
+        }
+        break;
+      case "blast":
+        if(data.blastIndex > -1 ){
+          selectCard(card, true, () => {
+            const opponentHand = getOpponentHand();
+            spliceOpponentCard(opponentHand, data.blastIndex);
+            splicePlayerCard(cardSet, data.index);
+          });
         }
         break;
       case "1":
@@ -523,6 +601,17 @@ const playCard = (data) => {
           });
         });
         break;
+      case "blast":
+        if(data.blastIndex > -1 ){
+          selectCard(card, false, () => {
+            startCardFlip([card], false, () => {
+              const playerHand = getPlayerHand();
+              spliceOpponentCard(cardSet, data.index);
+              splicePlayerCard(playerHand, data.blastIndex);
+            });
+          });
+        }
+        break;
       case "1":
         const opponentField = getOpponentField();
         const affectedCard = opponentField[opponentField.length - 1];
@@ -552,8 +641,21 @@ const playCard = (data) => {
   }
 };
 
+const endGame = () => {
+  readyToPlay = false;
+  selectedCard = null;
+  playerBlastCard = null;
+
+  inRoom = false;
+  blastSelect = false;
+  
+  roomOptions({rooms: []});
+};
+
 const updateGamestate = (data) => {
   const keys = Object.keys(data);
+  
+  gameState.waiting = false;
   
   for(let i = 0; i < keys.length; i++){
     const key = keys[i];
@@ -562,6 +664,10 @@ const updateGamestate = (data) => {
   
   if(gameState.clearFields === true){
     clearFields();
+  }
+  
+  if(gameState.winner !== null){
+    endGame();
   }
   
   updateReadyStatus(false);

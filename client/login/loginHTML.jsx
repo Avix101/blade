@@ -1,7 +1,8 @@
+let profileSelection;
+let profilePics;
+
 const handleLogin = (e) => {
 	e.preventDefault();
-	
-	//$("#domoMessage").animate({ width: 'hide' }, 350);
 	
 	if($("#user").val() == '' || $("#pass").val() == ''){
 		handleError("Username or password is empty");
@@ -58,8 +59,6 @@ const createLoginWindow = (csrf) => {
 const handleSignup = (e) => {
 	e.preventDefault();
 	
-	$("#domoMessage").animate({ width: 'hide' }, 350);
-	
 	if($("#user").val() == '' || $("#pass").val() == '' || $("#pass2").val() == ''){
 		handleError("All fields are required");
 		return false;
@@ -104,6 +103,15 @@ const SignupWindow = (props) => {
             <input id="pass2" className="form-control" type="password" name="pass2" placeholder="retype password" />
           </div>
         </div>
+        <hr />
+        <div className="form-group row vertical-center">
+          <label className="col-sm-4 col-form-label">Profile Icon: </label>
+          <div id="profileSelection" className="col-sm-4"></div>
+          <div className="col-sm-4">
+            <img id="profilePreview" className="profileIcon" src="/assets/img/player_icons/alfin.png" alt="profile" />
+          </div>
+        </div>
+        <hr />
         <input type="hidden" name="_csrf" value={props.csrf} />
         <div className="form-group row row-centered text-center">
           <div className="col-sm-2"></div>
@@ -116,6 +124,40 @@ const SignupWindow = (props) => {
 		</form>
 	);
 };
+
+const alterPreviewImage = (e) => {
+  const select = document.querySelector("#profileImgSelect");
+  const key = select.options[select.selectedIndex].value;
+  document.querySelector("#profilePreview").src = profilePics[key].imageFile;
+}
+
+const ProfileSelection = (props) => {
+  
+  const profileKeys = Object.keys(props.profiles);
+  const profiles = profileKeys.map((key) => {
+    const profile = props.profiles[key];
+    
+    return (
+      <option value={key}>
+        {profile.name}
+      </option>
+    );
+  });
+  
+  return (
+    <select name="profile_name" id="profileImgSelect" onChange={alterPreviewImage} className="custom-select">
+      {profiles}
+    </select>
+  );
+};
+
+const populateProfileSelection = (profiles) => {
+  console.log(profiles);
+  ReactDOM.render(
+    <ProfileSelection profiles={profiles} />,
+    profileSelection
+  );
+}
 
 const createSignupWindow = (csrf) => {
 	ReactDOM.render(
@@ -137,6 +179,8 @@ const setup = (csrf) => {
 	signupButton.addEventListener("click", (e) => {
 		e.preventDefault();
 		createSignupWindow(csrf);
+    profileSelection = document.querySelector("#profileSelection");
+    getProfiles();
 		return false;
 	});
 	
@@ -148,6 +192,13 @@ const getToken = () => {
 	sendAjax('GET', '/getToken', null, (result) => {
 		setup(result.csrfToken);
 	});
+};
+
+const getProfiles = () => {
+  sendAjax('GET', '/getProfiles', null, (data) => {
+    populateProfileSelection(data.profilePics);
+    profilePics = data.profilePics;
+  });
 };
 
 $(document).ready(() => {

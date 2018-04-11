@@ -13,6 +13,7 @@ const createRoom = (roomId) => {
   }
 
   rooms[roomId] = {
+    id: roomId,
     sockets: [],
     player1: null,
     player2: null,
@@ -51,6 +52,27 @@ const joinRoom = (roomId, sock) => {
   return false;
 };
 
+const destroyRoom = (roomId) => {
+  if (!rooms[roomId]) {
+    return false;
+  }
+
+  rooms[roomId] = null;
+  delete rooms[roomId];
+  return true;
+};
+
+const leaveRoom = (roomId, sock) => {
+  if (!rooms[roomId]) {
+    return false;
+  }
+
+  const socket = sock;
+  socket.leave(socket.roomJoined);
+
+  return destroyRoom(roomId);
+};
+
 const getSockets = (roomId) => {
   if (!rooms[roomId]) {
     return [];
@@ -77,23 +99,14 @@ const getRooms = () => {
 
 const getAvailableRooms = () => {
   const allRooms = getRooms();
-  const availableRooms = allRooms.filter(room => room.count < 2);
+  const availableRooms = allRooms.filter(room => getPlayerCount(room.id) < 2);
   return availableRooms;
-};
-
-const destroyRoom = (roomId) => {
-  if (!rooms[roomId]) {
-    return false;
-  }
-
-  rooms[roomId] = null;
-  delete rooms[roomId];
-  return true;
 };
 
 module.exports = {
   createRoom,
   joinRoom,
+  leaveRoom,
   getSockets,
   getPlayerStatus,
   getPlayerCount,
