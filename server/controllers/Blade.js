@@ -88,7 +88,8 @@ const getGameHistory = (req, res) => {
       if (!accounts[game.player1Id]) {
         accounts[game.player1Id] = {};
         accountIds.push(mongoose.Types.ObjectId(game.player1Id));
-      } else if (!accounts[game.player2Id]) {
+      }
+      if (!accounts[game.player2Id]) {
         accounts[game.player2Id] = {};
         accountIds.push(mongoose.Types.ObjectId(game.player2Id));
       }
