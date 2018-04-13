@@ -13,6 +13,21 @@ const main = (req, res) => {
   res.render('blade', { profileData, username });
 };
 
+const getProfile = (request, response) => {
+  console.log(request.query);
+  const req = request;
+  const res = response;
+
+  req.query.profile = `${req.query.profile}`;
+
+  if (!req.query.profile) {
+    res.status(400).json({ error: 'Bad profile request' });
+  }
+
+  const profile = profilePics[req.query.profile];
+  res.status(200).json({ imageFile: profile.imageFile });
+};
+
 const getAllProfilePics = (req, res) => {
   if (Object.keys(profilePics).length <= 0) {
     return res.status(500).json({ error: 'Profile pics not loaded by server' });
@@ -115,6 +130,7 @@ const getGameHistory = (req, res) => {
 
 module.exports = {
   main,
+  getProfile,
   getAllProfilePics,
   submitFeedback,
   getGameHistory,

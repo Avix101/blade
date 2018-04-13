@@ -36,6 +36,17 @@ const saveGame = (roomId, gameState) => {
   const player1 = socket1Status === 'player1' ? socket1 : socket2;
   const player2 = socket2Status === 'player2' ? socket2 : socket1;
 
+  if (!player1 || !player2 || !gameState) {
+    if (socket1) {
+      socket1.emit('gamedata', { saved: false });
+    }
+    if (socket2) {
+      socket2.emit('gamedata', { saved: false });
+    }
+
+    return;
+  }
+
   const gameData = {
     player1Id: player1.handshake.session.account._id,
     player2Id: player2.handshake.session.account._id,
@@ -84,14 +95,14 @@ const init = (ioInstance) => {
     socket.on('createRoom', () => {
       if (roomHandler.createRoom(socket.hash)) {
         if (roomHandler.joinRoom(socket.hash, socket)) {
-          socket.emit('roomJoined', { status: roomHandler.getPlayerStatus(socket.hash, socket) });
+          socket.emit('roomJoined', { room: socket.hash, status: roomHandler.getPlayerStatus(socket.hash, socket) });
         }
       }
     });
 
     socket.on('joinRoom', (data) => {
       if (roomHandler.joinRoom(data.room, socket)) {
-        socket.emit('roomJoined', { status: roomHandler.getPlayerStatus(data.room, socket) });
+        socket.emit('roomJoined', { room: data.room, status: roomHandler.getPlayerStatus(data.room, socket) });
         if (roomHandler.getPlayerCount(data.room) === 2) {
           blade.beginGame(data.room, () => {
             const sockets = roomHandler.getSockets(data.room);
@@ -107,6 +118,11 @@ const init = (ioInstance) => {
             );
             const gameState = blade.getGameState(socket.roomJoined);
             io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
+
+            io.sockets.in(socket.roomJoined).emit(
+              'playerInfo',
+              roomHandler.getProfileData(socket.roomJoined),
+            );
           });
         }
       }
@@ -192,6 +208,16 @@ const init = (ioInstance) => {
           socket.emit('turnAccepted');
         }
       }
+    });
+
+    socket.on('chatMessage', (data) => {
+      if (!socket.handshake.session.account || !socket.roomJoined) {
+        return;
+      }
+
+      const { username } = socket.handshake.session.account;
+      const message = `${username}: ${data.message}`;
+      io.sockets.in(socket.roomJoined).emit('chatMessage', { message });
     });
 
     socket.on('disconnect', () => {

@@ -5,6 +5,36 @@ const GameWindow = (props) => {
   );
 };
 
+const MusicAndChatWindow = (props) => {
+  return (
+    <div className="text-center">
+      <h1>Music Player</h1>
+      <hr />
+      <iframe 
+        src="https://www.youtube.com/embed/videoseries?list=PLbzURmDMdJdNHYJnRQjXxa0bDZyPcslpO"
+        frameBorder="0" allow="autoplay; encrypted-media" id="videoFrame">
+      </iframe>
+      
+      <h1>Chat Window</h1>
+      <hr />
+      <textarea id="chat" readOnly className="form-control"></textarea>
+      <div className="input-group">
+        <input id="chatBox" type="text" className="form-control" placeholder="Message..." />
+        <span className="input-group-btn">
+          <button onClick={sendChatMessage} className="btn btn-lg btn-primary">Send</button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const renderRightPanel = () => {
+  ReactDOM.render(
+    <MusicAndChatWindow />,
+    document.querySelector("#rightPanel")
+  );
+};
+
 const renderGame = (width, height) => {
   ReactDOM.render(
     <GameWindow width={width} height={height} />,
@@ -17,6 +47,8 @@ const renderGame = (width, height) => {
   viewport.addEventListener('mousemove', getMouse);
   viewport.addEventListener('mouseleave', processMouseLeave);
   viewport.addEventListener('click', processClick);
+  
+  renderRightPanel();
 };
 
 const disableDefaultForm = (e) => {
@@ -39,6 +71,9 @@ const handlePasswordChange = (e) => {
 
   sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), () => {
     handleSuccess("Password successfully changed!");
+    $("#newPassword").val("");
+    $("#newPassword2").val("");
+    $("#password").val("");
   });
 	
 	return false;
@@ -66,19 +101,26 @@ const RoomWindow = (props) => {
     return (<div></div>);
   }
   
-  let rooms = props.rooms;
+  let roomOptions;
   
-  if(rooms.length === 0){
-    rooms = [{id: "No Rooms Available", count: 0}];
-  };
-  
-  const roomOptions = rooms.map((room) => {
-    const bgColor = "bg-secondary";
-    return (
+  const bgColor = "bg-secondary";
+  if(props.rooms.length > 0){
+    roomOptions = props.rooms.map((room) => {
+      return (
+        <a href="#" className={`list-group-item list-group-item-action ${bgColor}`}
+          data-room={room.id} onClick={onRoomSelect}
+        >
+          User: {room.owner} Code: {room.id}
+        </a>
+      );
+    });
+  } else {
+    roomOptions = [(
       <a href="#" className={`list-group-item list-group-item-action ${bgColor}`}
-        data-room={room.id} onClick={onRoomSelect}>{room.id} {room.count}/2</a>
-    );
-  });
+          data-room="" onClick={onRoomSelect}>No Rooms Available</a>
+    )];
+  }
+  
   
   return (
     <div id="roomSelect">

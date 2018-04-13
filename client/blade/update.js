@@ -218,6 +218,7 @@ const joinRoom = (e) => {
 const roomJoined = (data) => {
   playerStatus = data.status;
   inRoom = true;
+  addToChat(`You have joined room: ${data.room}`);
   
   const subDeckKeys = Object.keys(deck);
   for(let i = 0; i < subDeckKeys.length; i++){
@@ -230,7 +231,9 @@ const roomJoined = (data) => {
     'player2': [],
   };
   
-  gameState.turnType = "pickFromDeck";
+  playerProfiles = {};
+  
+  gameState.turnType = "begin";
   gameState.turnOwner = null;
   gameState.player1Points = 0;
   gameState.player2Points = 0;
@@ -239,6 +242,37 @@ const roomJoined = (data) => {
   
   renderRoomSelection([], true);
 }
+
+const loadPlayerProfiles = (data) => {
+  
+  if(data.player1){
+    sendAjax('GET', '/getProfile', `profile=${data.player1.profile}`, (profileData) => {
+      const image = new Image();
+      image.onload = () => {
+        playerProfiles['player1'] = {
+          charImage: image,
+          username: data.player1.username,
+        }
+      };
+      
+      image.src = profileData.imageFile;
+    });
+  }
+  
+  if(data.player2){
+    sendAjax('GET', '/getProfile', `profile=${data.player2.profile}`, (profileData) => {
+      const image = new Image();
+      image.onload = () => {
+        playerProfiles['player2'] = {
+          charImage: image,
+          username: data.player2.username,
+        }
+      };
+      
+      image.src = profileData.imageFile;
+    });
+  }
+};
 
 const setDeck = (data) => {
   
@@ -299,6 +333,22 @@ const setDeck = (data) => {
   
   
   //flushCards(deck.player1, 770, true);
+};
+
+const getPlayerProfile = () => {
+  if(playerStatus === 'player1'){
+    return playerProfiles['player1'];
+  } else if(playerStatus === 'player2'){
+    return playerProfiles['player2'];
+  }
+};
+
+const getOpponentProfile = () => {
+  if(playerStatus === 'player1'){
+    return playerProfiles['player2'];
+  } else if(playerStatus === 'player2'){
+    return playerProfiles['player1'];
+  }
 };
 
 const getTopDeckCard = () => {
@@ -538,7 +588,9 @@ const playCard = (data) => {
     switch(card.name){
       case "bolt":
         selectCard(card, true, true, () => {
-          splicePlayerCard(cardSet, data.index);
+          fadeCard(card, () => {
+            splicePlayerCard(cardSet, data.index);
+          });
         });
         const opponentField = getOpponentField();
         const target = opponentField[opponentField.length - 1];
@@ -546,7 +598,9 @@ const playCard = (data) => {
         break;
       case "mirror":
         selectCard(card, true, true, () => {
-          splicePlayerCard(cardSet, data.index);
+          fadeCard(card, () => {
+            splicePlayerCard(cardSet, data.index);
+          });
         });
         const temp = getPlayerField();
         if(playerStatus === 'player1'){
@@ -564,9 +618,11 @@ const playCard = (data) => {
       case "blast":
         if(data.blastIndex > -1 ){
           selectCard(card, true, true, () => {
-            const opponentHand = getOpponentHand();
-            spliceOpponentCard(opponentHand, data.blastIndex);
-            splicePlayerCard(cardSet, data.index);
+            fadeCard(card, () => {
+              const opponentHand = getOpponentHand();
+              spliceOpponentCard(opponentHand, data.blastIndex);
+              splicePlayerCard(cardSet, data.index);
+            });
           });
         }
         break;
@@ -575,7 +631,9 @@ const playCard = (data) => {
         const affectedCard = playerField[playerField.length - 1];
         if(!affectedCard.isRevealed()){
           selectCard(card, true, true, () => {
-            splicePlayerCard(cardSet, data.index);
+            fadeCard(card, () => {
+              splicePlayerCard(cardSet, data.index);
+            });
           });
           startCardFlip([affectedCard], false);
         } else {
@@ -603,7 +661,9 @@ const playCard = (data) => {
             startCardFlip([target], false);
             
             //Animate or timeout so that opponent can actually see move
-            spliceOpponentCard(cardSet, data.index);
+            fadeCard(card, () => {
+              spliceOpponentCard(cardSet, data.index);
+            });
           });
         });
         
@@ -611,29 +671,33 @@ const playCard = (data) => {
       case "mirror":
         selectCard(card, true, true, () => {
           startCardFlip([card], false, () => {
-            const temp = getPlayerField();
-            if(playerStatus === 'player1'){
-              fields['player1'] = fields['player2'];
-              fields['player2'] = temp;
-              stackCards(fields['player1'], true, 500);
-              stackCards(fields['player2'], false, 500);
-            } else {
-              fields['player2'] = fields['player1'];
-              fields['player1'] = temp;
-              stackCards(fields['player1'], false, 500);
-              stackCards(fields['player2'], true, 500);
-            }
-            spliceOpponentCard(cardSet, data.index);
+            fadeCard(card, () => {
+              const temp = getPlayerField();
+              if(playerStatus === 'player1'){
+                fields['player1'] = fields['player2'];
+                fields['player2'] = temp;
+                stackCards(fields['player1'], true, 500);
+                stackCards(fields['player2'], false, 500);
+              } else {
+                fields['player2'] = fields['player1'];
+                fields['player1'] = temp;
+                stackCards(fields['player1'], false, 500);
+                stackCards(fields['player2'], true, 500);
+              }
+              spliceOpponentCard(cardSet, data.index);
+            });
           });
         });
         break;
       case "blast":
         if(data.blastIndex > -1 ){
-          selectCard(card, false, true, () => {
+          selectCard(card, true, true, () => {
             startCardFlip([card], false, () => {
-              const playerHand = getPlayerHand();
-              spliceOpponentCard(cardSet, data.index);
-              splicePlayerCard(playerHand, data.blastIndex);
+              fadeCard(card, () => {
+                const playerHand = getPlayerHand();
+                spliceOpponentCard(cardSet, data.index);
+                splicePlayerCard(playerHand, data.blastIndex);
+              });
             });
           });
         }
@@ -643,9 +707,12 @@ const playCard = (data) => {
         const affectedCard = opponentField[opponentField.length - 1];
         if(!affectedCard.isRevealed()){
           selectCard(card, true, true, () => {
-            startCardFlip([affectedCard], false, () => {
-              spliceOpponentCard(cardSet, data.index);
+            startCardFlip([card], false, () => {
+              fadeCard(card, () => {
+                spliceOpponentCard(cardSet, data.index);
+              });
             });
+            startCardFlip([affectedCard], false);
           });
           
         } else {
@@ -954,4 +1021,34 @@ const foldInCards = (cardCollection, x, y, callback) => {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
+};
+
+const fadeCard = (card, callback) => {
+  const fadeAnim = new Animation(
+    {
+      begin: 0,
+      timeToFinish: 500,
+      propsBegin: {opacity: 1},
+      propsEnd: {opacity: 0},
+    }, true
+  );
+  
+  card.bindAnimation(fadeAnim, callback);
+};
+
+const sendChatMessage = (e) => {
+  const chatBox = document.querySelector("#chatBox");
+  const message = chatBox.value;
+  chatBox.value = "";
+  socket.emit('chatMessage', { message });
+};
+
+const receivedChatMessage = (data) => {
+  const message = data.message;
+  addToChat(message);
+}
+
+const addToChat = (text) => {
+  const chatWindow = document.querySelector("#chat");
+  chatWindow.value = `${chatWindow.value}\n${text}`;
 };

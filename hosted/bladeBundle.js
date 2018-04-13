@@ -104,6 +104,7 @@ var Card = function () {
     //this.queuedAnimations = [];
     this.animCallback = null;
     this.sealed = false;
+    this.opacity = 1;
   }
 
   _createClass(Card, [{
@@ -236,6 +237,8 @@ var drawCard = function drawCard(card) {
 
   prepCtx.save();
 
+  prepCtx.globalAlpha = card.opacity;
+
   if (card === selectedCard) {
     prepCtx.filter = "hue-rotate(" + card.hueRotate + "deg)";
   }
@@ -278,17 +281,30 @@ var drawTurnIndicator = function drawTurnIndicator() {
   var playerTurn = gameState.turnOwner === playerStatus;
 
   prepCtx.save();
-  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.font = "28pt Fira Sans, sans-serif";
   prepCtx.textAlign = "center";
   prepCtx.textBaseline = "middle";
+  var x = 490;
+  var y = 645;
 
-  if (playerTurn) {
-    prepCtx.fillStyle = "blue";
-    prepCtx.fillText("Your Turn!", 520, 640);
-  } else {
-    prepCtx.fillStyle = "red";
-    prepCtx.fillText("Opponent's Turn!", 1400, 400);
+  switch (gameState.turnType) {
+    case "playCard":
+      if (playerTurn) {
+        prepCtx.fillStyle = "cyan";
+        prepCtx.fillText("Your turn, select a card from your hand!", x, y);
+      } else {
+        prepCtx.fillStyle = "pink";
+        prepCtx.fillText("Wait for your opponent to play a card.", x, y);
+      }
+      break;
+    case "pickFromDeck":
+      prepCtx.fillStyle = "white";
+      prepCtx.fillText("Score tied - both players draw from their decks.", x, y);
+      break;
+    default:
+      break;
   }
+
   prepCtx.restore();
 };
 
@@ -317,7 +333,7 @@ var drawGameResult = function drawGameResult() {
   prepCtx.restore();
 };
 
-var drawWaitingOverlay = function drawWaitingOverlay() {
+var drawWaitingOverlay = function drawWaitingOverlay(text) {
   prepCtx.save();
   prepCtx.globalAlpha = 0.7;
   prepCtx.fillStyle = "black";
@@ -329,7 +345,33 @@ var drawWaitingOverlay = function drawWaitingOverlay() {
   prepCtx.textBaseline = "middle";
 
   prepCtx.fillStyle = "white";
-  prepCtx.fillText("Waiting for opponent...", prepCanvas.width / 2, prepCanvas.height / 2);
+  prepCtx.fillText(text, prepCanvas.width / 2, prepCanvas.height / 2);
+
+  prepCtx.restore();
+};
+
+var drawPlayerProfiles = function drawPlayerProfiles() {
+  var playerProfile = getPlayerProfile();
+  var opponentProfile = getOpponentProfile();
+
+  prepCtx.save();
+
+  prepCtx.font = "32pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  prepCtx.fillStyle = "white";
+
+  if (playerProfile) {
+    prepCtx.drawImage(playerProfile.charImage, 25, 750, 256, 256);
+
+    prepCtx.fillText(playerProfile.username, 153, 1020);
+  }
+
+  if (opponentProfile) {
+    prepCtx.drawImage(opponentProfile.charImage, 25, -10, 256, 256);
+
+    prepCtx.fillText(opponentProfile.username, 153, 260);
+  }
 
   prepCtx.restore();
 };
@@ -372,18 +414,24 @@ var draw = function draw() {
     }
   }
 
+  drawPlayerProfiles();
+
   updateReadyStatus(readyStatus);
 
-  drawScore(getPlayerPoints(), getOpponentPoints());
-
-  if (gameState.winner) {
-    drawGameResult();
+  if (!inRoom && gameState.turnType !== "end") {
+    drawWaitingOverlay("Please create or join a game...");
   } else {
-    drawTurnIndicator();
-  }
+    drawScore(getPlayerPoints(), getOpponentPoints());
 
-  if (gameState.waiting) {
-    drawWaitingOverlay();
+    if (gameState.winner) {
+      drawGameResult();
+    } else {
+      drawTurnIndicator();
+    }
+
+    if (gameState.waiting) {
+      drawWaitingOverlay("Waiting for opponent...");
+    }
   }
 
   displayFrame();
@@ -412,12 +460,13 @@ var bladeLink = void 0,
     profileLink = void 0;
 
 var playerStatus = void 0;
+var playerProfiles = {};
 var blastSelect = false;
 var playerBlastCard = void 0;
 var inRoom = false;
 var selectionEnabled = true;
 var gameState = {
-  turnType: "pickFromDeck",
+  turnType: "begin",
   turnOwner: null,
   player1Points: 0,
   player2Points: 0,
@@ -513,6 +562,8 @@ var init = function init() {
   socket.on('loadBladeCards', loadBladeCards);
   socket.on('roomOptions', roomOptions);
   socket.on('roomJoined', roomJoined);
+  socket.on('chatMessage', receivedChatMessage);
+  socket.on('playerInfo', loadPlayerProfiles);
   socket.on('setDeck', setDeck);
   socket.on('sortDeck', sortDeck);
   socket.on('pickFromDeck', pickFromDeck);
@@ -525,6 +576,8 @@ var init = function init() {
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
 
   animationFrame = requestAnimationFrame(update);
+
+  addToChat("You have joined the lobby");
 };
 
 //Run the init function when the window loads
@@ -540,6 +593,47 @@ var GameWindow = function GameWindow(props) {
   return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
 };
 
+var MusicAndChatWindow = function MusicAndChatWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "text-center" },
+    React.createElement(
+      "h1",
+      null,
+      "Music Player"
+    ),
+    React.createElement("hr", null),
+    React.createElement("iframe", {
+      src: "https://www.youtube.com/embed/videoseries?list=PLbzURmDMdJdNHYJnRQjXxa0bDZyPcslpO",
+      frameBorder: "0", allow: "autoplay; encrypted-media", id: "videoFrame" }),
+    React.createElement(
+      "h1",
+      null,
+      "Chat Window"
+    ),
+    React.createElement("hr", null),
+    React.createElement("textarea", { id: "chat", readOnly: true, className: "form-control" }),
+    React.createElement(
+      "div",
+      { className: "input-group" },
+      React.createElement("input", { id: "chatBox", type: "text", className: "form-control", placeholder: "Message..." }),
+      React.createElement(
+        "span",
+        { className: "input-group-btn" },
+        React.createElement(
+          "button",
+          { onClick: sendChatMessage, className: "btn btn-lg btn-primary" },
+          "Send"
+        )
+      )
+    )
+  );
+};
+
+var renderRightPanel = function renderRightPanel() {
+  ReactDOM.render(React.createElement(MusicAndChatWindow, null), document.querySelector("#rightPanel"));
+};
+
 var renderGame = function renderGame(width, height) {
   ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
 
@@ -549,6 +643,8 @@ var renderGame = function renderGame(width, height) {
   viewport.addEventListener('mousemove', getMouse);
   viewport.addEventListener('mouseleave', processMouseLeave);
   viewport.addEventListener('click', processClick);
+
+  renderRightPanel();
 };
 
 var disableDefaultForm = function disableDefaultForm(e) {
@@ -571,6 +667,9 @@ var handlePasswordChange = function handlePasswordChange(e) {
 
   sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), function () {
     handleSuccess("Password successfully changed!");
+    $("#newPassword").val("");
+    $("#newPassword2").val("");
+    $("#password").val("");
   });
 
   return false;
@@ -598,24 +697,30 @@ var RoomWindow = function RoomWindow(props) {
     return React.createElement("div", null);
   }
 
-  var rooms = props.rooms;
+  var roomOptions = void 0;
 
-  if (rooms.length === 0) {
-    rooms = [{ id: "No Rooms Available", count: 0 }];
-  };
-
-  var roomOptions = rooms.map(function (room) {
-    var bgColor = "bg-secondary";
-    return React.createElement(
+  var bgColor = "bg-secondary";
+  if (props.rooms.length > 0) {
+    roomOptions = props.rooms.map(function (room) {
+      return React.createElement(
+        "a",
+        { href: "#", className: "list-group-item list-group-item-action " + bgColor,
+          "data-room": room.id, onClick: onRoomSelect
+        },
+        "User: ",
+        room.owner,
+        " Code: ",
+        room.id
+      );
+    });
+  } else {
+    roomOptions = [React.createElement(
       "a",
       { href: "#", className: "list-group-item list-group-item-action " + bgColor,
-        "data-room": room.id, onClick: onRoomSelect },
-      room.id,
-      " ",
-      room.count,
-      "/2"
-    );
-  });
+        "data-room": "", onClick: onRoomSelect },
+      "No Rooms Available"
+    )];
+  }
 
   return React.createElement(
     "div",
@@ -1558,6 +1663,7 @@ var joinRoom = function joinRoom(e) {
 var roomJoined = function roomJoined(data) {
   playerStatus = data.status;
   inRoom = true;
+  addToChat("You have joined room: " + data.room);
 
   var subDeckKeys = Object.keys(deck);
   for (var i = 0; i < subDeckKeys.length; i++) {
@@ -1570,7 +1676,9 @@ var roomJoined = function roomJoined(data) {
     'player2': []
   };
 
-  gameState.turnType = "pickFromDeck";
+  playerProfiles = {};
+
+  gameState.turnType = "begin";
   gameState.turnOwner = null;
   gameState.player1Points = 0;
   gameState.player2Points = 0;
@@ -1578,6 +1686,37 @@ var roomJoined = function roomJoined(data) {
   gameState.waiting = false;
 
   renderRoomSelection([], true);
+};
+
+var loadPlayerProfiles = function loadPlayerProfiles(data) {
+
+  if (data.player1) {
+    sendAjax('GET', '/getProfile', "profile=" + data.player1.profile, function (profileData) {
+      var image = new Image();
+      image.onload = function () {
+        playerProfiles['player1'] = {
+          charImage: image,
+          username: data.player1.username
+        };
+      };
+
+      image.src = profileData.imageFile;
+    });
+  }
+
+  if (data.player2) {
+    sendAjax('GET', '/getProfile', "profile=" + data.player2.profile, function (profileData) {
+      var image = new Image();
+      image.onload = function () {
+        playerProfiles['player2'] = {
+          charImage: image,
+          username: data.player2.username
+        };
+      };
+
+      image.src = profileData.imageFile;
+    });
+  }
 };
 
 var setDeck = function setDeck(data) {
@@ -1637,6 +1776,22 @@ var setDeck = function setDeck(data) {
   });*/
 
   //flushCards(deck.player1, 770, true);
+};
+
+var getPlayerProfile = function getPlayerProfile() {
+  if (playerStatus === 'player1') {
+    return playerProfiles['player1'];
+  } else if (playerStatus === 'player2') {
+    return playerProfiles['player2'];
+  }
+};
+
+var getOpponentProfile = function getOpponentProfile() {
+  if (playerStatus === 'player1') {
+    return playerProfiles['player2'];
+  } else if (playerStatus === 'player2') {
+    return playerProfiles['player1'];
+  }
 };
 
 var getTopDeckCard = function getTopDeckCard() {
@@ -1859,7 +2014,9 @@ var playCard = function playCard(data) {
     switch (card.name) {
       case "bolt":
         selectCard(card, true, true, function () {
-          splicePlayerCard(cardSet, data.index);
+          fadeCard(card, function () {
+            splicePlayerCard(cardSet, data.index);
+          });
         });
         var opponentField = getOpponentField();
         var target = opponentField[opponentField.length - 1];
@@ -1867,7 +2024,9 @@ var playCard = function playCard(data) {
         break;
       case "mirror":
         selectCard(card, true, true, function () {
-          splicePlayerCard(cardSet, data.index);
+          fadeCard(card, function () {
+            splicePlayerCard(cardSet, data.index);
+          });
         });
         var temp = getPlayerField();
         if (playerStatus === 'player1') {
@@ -1885,9 +2044,11 @@ var playCard = function playCard(data) {
       case "blast":
         if (data.blastIndex > -1) {
           selectCard(card, true, true, function () {
-            var opponentHand = getOpponentHand();
-            spliceOpponentCard(opponentHand, data.blastIndex);
-            splicePlayerCard(cardSet, data.index);
+            fadeCard(card, function () {
+              var opponentHand = getOpponentHand();
+              spliceOpponentCard(opponentHand, data.blastIndex);
+              splicePlayerCard(cardSet, data.index);
+            });
           });
         }
         break;
@@ -1896,7 +2057,9 @@ var playCard = function playCard(data) {
         var affectedCard = playerField[playerField.length - 1];
         if (!affectedCard.isRevealed()) {
           selectCard(card, true, true, function () {
-            splicePlayerCard(cardSet, data.index);
+            fadeCard(card, function () {
+              splicePlayerCard(cardSet, data.index);
+            });
           });
           startCardFlip([affectedCard], false);
         } else {
@@ -1924,7 +2087,9 @@ var playCard = function playCard(data) {
             startCardFlip([target], false);
 
             //Animate or timeout so that opponent can actually see move
-            spliceOpponentCard(cardSet, data.index);
+            fadeCard(card, function () {
+              spliceOpponentCard(cardSet, data.index);
+            });
           });
         });
 
@@ -1932,29 +2097,33 @@ var playCard = function playCard(data) {
       case "mirror":
         selectCard(card, true, true, function () {
           startCardFlip([card], false, function () {
-            var temp = getPlayerField();
-            if (playerStatus === 'player1') {
-              fields['player1'] = fields['player2'];
-              fields['player2'] = temp;
-              stackCards(fields['player1'], true, 500);
-              stackCards(fields['player2'], false, 500);
-            } else {
-              fields['player2'] = fields['player1'];
-              fields['player1'] = temp;
-              stackCards(fields['player1'], false, 500);
-              stackCards(fields['player2'], true, 500);
-            }
-            spliceOpponentCard(cardSet, data.index);
+            fadeCard(card, function () {
+              var temp = getPlayerField();
+              if (playerStatus === 'player1') {
+                fields['player1'] = fields['player2'];
+                fields['player2'] = temp;
+                stackCards(fields['player1'], true, 500);
+                stackCards(fields['player2'], false, 500);
+              } else {
+                fields['player2'] = fields['player1'];
+                fields['player1'] = temp;
+                stackCards(fields['player1'], false, 500);
+                stackCards(fields['player2'], true, 500);
+              }
+              spliceOpponentCard(cardSet, data.index);
+            });
           });
         });
         break;
       case "blast":
         if (data.blastIndex > -1) {
-          selectCard(card, false, true, function () {
+          selectCard(card, true, true, function () {
             startCardFlip([card], false, function () {
-              var playerHand = getPlayerHand();
-              spliceOpponentCard(cardSet, data.index);
-              splicePlayerCard(playerHand, data.blastIndex);
+              fadeCard(card, function () {
+                var playerHand = getPlayerHand();
+                spliceOpponentCard(cardSet, data.index);
+                splicePlayerCard(playerHand, data.blastIndex);
+              });
             });
           });
         }
@@ -1964,9 +2133,12 @@ var playCard = function playCard(data) {
         var _affectedCard = _opponentField[_opponentField.length - 1];
         if (!_affectedCard.isRevealed()) {
           selectCard(card, true, true, function () {
-            startCardFlip([_affectedCard], false, function () {
-              spliceOpponentCard(cardSet, data.index);
+            startCardFlip([card], false, function () {
+              fadeCard(card, function () {
+                spliceOpponentCard(cardSet, data.index);
+              });
             });
+            startCardFlip([_affectedCard], false);
           });
         } else {
           fields[data.cardSet].push(card);
@@ -2260,6 +2432,34 @@ var foldInCards = function foldInCards(cardCollection, x, y, callback) {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
+};
+
+var fadeCard = function fadeCard(card, callback) {
+  var fadeAnim = new Animation({
+    begin: 0,
+    timeToFinish: 500,
+    propsBegin: { opacity: 1 },
+    propsEnd: { opacity: 0 }
+  }, true);
+
+  card.bindAnimation(fadeAnim, callback);
+};
+
+var sendChatMessage = function sendChatMessage(e) {
+  var chatBox = document.querySelector("#chatBox");
+  var message = chatBox.value;
+  chatBox.value = "";
+  socket.emit('chatMessage', { message: message });
+};
+
+var receivedChatMessage = function receivedChatMessage(data) {
+  var message = data.message;
+  addToChat(message);
+};
+
+var addToChat = function addToChat(text) {
+  var chatWindow = document.querySelector("#chat");
+  chatWindow.value = chatWindow.value + "\n" + text;
 };
 "use strict";
 

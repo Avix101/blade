@@ -295,6 +295,7 @@ class Game {
         break;
       }
       case 'blast': {
+        console.log(opponentHand[blastIndex]);
         opponentHand.splice(blastIndex, 1);
         break;
       }

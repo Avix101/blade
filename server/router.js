@@ -24,6 +24,7 @@ const attach = (app) => {
   app.post('/signup', mid.requiresSecure, mid.requiresLogout, controllers.Account.signup);
   app.post('/changePassword', mid.requiresLogin, controllers.Account.updatePassword);
   app.post('/feedback', mid.requiresLogin, controllers.Blade.submitFeedback);
+  app.get('/getProfile', mid.requiresLogin, controllers.Blade.getProfile);
   app.get('/getProfiles', mid.requiresSecure, mid.requiresLogout, controllers.Blade.getAllProfilePics);
   app.get('/getGameHistory', mid.requiresLogin, controllers.Blade.getGameHistory);
   app.get('/logout', mid.requiresLogin, controllers.Account.logout);

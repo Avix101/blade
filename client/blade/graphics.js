@@ -41,6 +41,8 @@ const drawCard = (card) => {
   
   prepCtx.save();
   
+  prepCtx.globalAlpha = card.opacity;
+  
   if(card === selectedCard){
     prepCtx.filter = `hue-rotate(${card.hueRotate}deg)`;
   }
@@ -89,17 +91,30 @@ const drawTurnIndicator = () => {
   const playerTurn = gameState.turnOwner === playerStatus;
   
   prepCtx.save();
-  prepCtx.font = "72pt Fira Sans, sans-serif";
+  prepCtx.font = "28pt Fira Sans, sans-serif";
   prepCtx.textAlign = "center";
   prepCtx.textBaseline = "middle";
+  const x = 490;
+  const y = 645;
   
-  if(playerTurn){
-    prepCtx.fillStyle = "blue";
-    prepCtx.fillText("Your Turn!", 520, 640);
-  } else {
-    prepCtx.fillStyle = "red";
-    prepCtx.fillText("Opponent's Turn!", 1400, 400);
+  switch(gameState.turnType){
+    case "playCard":
+      if(playerTurn){
+        prepCtx.fillStyle = "cyan";
+        prepCtx.fillText("Your turn, select a card from your hand!", x, y);
+      } else {
+        prepCtx.fillStyle = "pink";
+        prepCtx.fillText("Wait for your opponent to play a card.", x, y);
+      }
+      break;
+    case "pickFromDeck":
+      prepCtx.fillStyle = "white";
+      prepCtx.fillText("Score tied - both players draw from their decks.", x, y);
+      break;
+    default:
+      break;
   }
+  
   prepCtx.restore();
 };
 
@@ -128,7 +143,7 @@ const drawGameResult = () => {
   prepCtx.restore();
 };
 
-const drawWaitingOverlay = () => {
+const drawWaitingOverlay = (text) => {
   prepCtx.save();
   prepCtx.globalAlpha = 0.7;
   prepCtx.fillStyle = "black";
@@ -140,7 +155,45 @@ const drawWaitingOverlay = () => {
   prepCtx.textBaseline = "middle";
   
   prepCtx.fillStyle = "white";
-  prepCtx.fillText("Waiting for opponent...", prepCanvas.width / 2, prepCanvas.height / 2);
+  prepCtx.fillText(text, prepCanvas.width / 2, prepCanvas.height / 2);
+  
+  prepCtx.restore();
+};
+
+const drawPlayerProfiles = () => {
+  const playerProfile = getPlayerProfile();
+  const opponentProfile = getOpponentProfile();
+  
+  prepCtx.save();
+  
+  prepCtx.font = "32pt Fira Sans, sans-serif";
+  prepCtx.textAlign = "center";
+  prepCtx.textBaseline = "middle";
+  prepCtx.fillStyle = "white";
+  
+  if(playerProfile){
+    prepCtx.drawImage(
+      playerProfile.charImage, 
+      25, 
+      750,
+      256,
+      256
+    );
+    
+    prepCtx.fillText(playerProfile.username, 153, 1020);
+  }
+  
+  if(opponentProfile){
+    prepCtx.drawImage(
+      opponentProfile.charImage,
+      25,
+      -10,
+      256,
+      256,
+    );
+    
+    prepCtx.fillText(opponentProfile.username, 153, 260);
+  }
   
   prepCtx.restore();
 };
@@ -183,18 +236,24 @@ const draw = () => {
     }
   }
   
+  drawPlayerProfiles();
+  
   updateReadyStatus(readyStatus);
   
-  drawScore(getPlayerPoints(), getOpponentPoints());
-  
-  if(gameState.winner){
-    drawGameResult();
+  if(!inRoom && gameState.turnType !== "end"){
+    drawWaitingOverlay("Please create or join a game...");
   } else {
-    drawTurnIndicator();
-  }
-  
-  if(gameState.waiting){
-    drawWaitingOverlay();
+    drawScore(getPlayerPoints(), getOpponentPoints());
+    
+    if(gameState.winner){
+      drawGameResult();
+    } else {
+      drawTurnIndicator();
+    }
+    
+    if(gameState.waiting){
+      drawWaitingOverlay("Waiting for opponent...");
+    }
   }
   
   displayFrame();

@@ -15,6 +15,7 @@ const createRoom = (roomId) => {
   rooms[roomId] = {
     id: roomId,
     sockets: [],
+    owner: 'Anonymous',
     player1: null,
     player2: null,
   };
@@ -41,6 +42,11 @@ const joinRoom = (roomId, sock) => {
     case 0:
       room.sockets.push(socket);
       room.player1 = socket;
+
+      if (socket.handshake.session.account.username) {
+        room.owner = socket.handshake.session.account.username;
+      }
+
       return true;
     case 1:
       room.sockets.push(socket);
@@ -82,6 +88,32 @@ const getSockets = (roomId) => {
   return rooms[roomId].sockets;
 };
 
+const getProfileData = (roomId) => {
+  if (!rooms[roomId]) {
+    return {};
+  }
+
+  const room = rooms[roomId];
+
+  const data = {};
+
+  if (room.player1) {
+    data.player1 = {
+      profile: room.player1.handshake.session.account.profile_name,
+      username: room.player1.handshake.session.account.username,
+    };
+  }
+
+  if (room.player2) {
+    data.player2 = {
+      profile: room.player2.handshake.session.account.profile_name,
+      username: room.player2.handshake.session.account.username,
+    };
+  }
+
+  return data;
+};
+
 const getPlayerStatus = (roomId, socket) => {
   if (!rooms[roomId]) {
     return null;
@@ -96,7 +128,7 @@ const getPlayerStatus = (roomId, socket) => {
 
 const getRooms = () => {
   const roomKeys = Object.keys(rooms);
-  return roomKeys.map(key => ({ id: key, count: getPlayerCount(key) }));
+  return roomKeys.map(key => ({ id: key, count: getPlayerCount(key), owner: rooms[key].owner }));
 };
 
 const getAvailableRooms = () => {
@@ -110,6 +142,7 @@ module.exports = {
   joinRoom,
   leaveRoom,
   getSockets,
+  getProfileData,
   getPlayerStatus,
   getPlayerCount,
   getRooms,

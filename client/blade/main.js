@@ -11,12 +11,13 @@ let mousePos = {x: 0, y: 0};
 let bladeLink, instructionsLink, aboutLink, feedbackLink, disclaimerLink, profileLink
 
 let playerStatus;
+let playerProfiles = {};
 let blastSelect = false;
 let playerBlastCard;
 let inRoom = false;
 let selectionEnabled = true;
 const gameState = {
-  turnType: "pickFromDeck",
+  turnType: "begin",
   turnOwner: null,
   player1Points: 0,
   player2Points: 0,
@@ -106,6 +107,8 @@ const init = () => {
   socket.on('loadBladeCards', loadBladeCards);
   socket.on('roomOptions', roomOptions);
   socket.on('roomJoined', roomJoined);
+  socket.on('chatMessage', receivedChatMessage);
+  socket.on('playerInfo', loadPlayerProfiles);
   socket.on('setDeck', setDeck);
   socket.on('sortDeck', sortDeck);
   socket.on('pickFromDeck', pickFromDeck);
@@ -118,6 +121,8 @@ const init = () => {
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
   
   animationFrame = requestAnimationFrame(update);
+  
+  addToChat("You have joined the lobby");
 };
 
 //Run the init function when the window loads

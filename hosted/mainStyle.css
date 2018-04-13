@@ -92,3 +92,18 @@ body, html {
 .gameHistory figcaption {
   text-align: center;
 }
+
+#videoFrame {
+  width: 100%;
+  max-width: 100%;
+}
+
+#hamburgerNav {
+  border: 0px solid black;
+}
+
+#chat {
+  height: 250px;
+  overflow: auto;
+  margin-bottom: 10px;
+}

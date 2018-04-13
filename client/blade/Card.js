@@ -14,6 +14,7 @@ class Card {
     //this.queuedAnimations = [];
     this.animCallback = null;
     this.sealed = false;
+    this.opacity = 1;
   };
   
   bindAnimation(animation, callback, seal){
