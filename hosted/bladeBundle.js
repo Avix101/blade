@@ -1377,13 +1377,13 @@ var GameHistory = function GameHistory(props) {
     ),
     React.createElement("br", null),
     React.createElement(
+      "p",
+      { className: "lead" },
+      "Sorted by most recent to least recent:"
+    ),
+    React.createElement(
       "div",
       { id: "gameHistoryList" },
-      React.createElement(
-        "p",
-        { className: "lead" },
-        "Sorted by most recent to least recent:"
-      ),
       React.createElement(
         "ul",
         { className: "list-group" },

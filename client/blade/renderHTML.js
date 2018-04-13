@@ -470,8 +470,8 @@ const GameHistory = (props) => {
       </div>
       <br />
       
+      <p className="lead">Sorted by most recent to least recent:</p>
       <div id="gameHistoryList">
-        <p className="lead">Sorted by most recent to least recent:</p>
         <ul className="list-group">
           {games}
         </ul>
