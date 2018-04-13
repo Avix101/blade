@@ -267,130 +267,51 @@ $(document).ready(function () {
 });
 "use strict";
 
-//Construct the main game window (the canvas)
-var GameWindow = function GameWindow(props) {
-  return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
-};
-
-var renderGame = function renderGame(width, height) {
-  ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
-
-  //Hook up viewport (display canvas) to JS code
-  viewport = document.querySelector("#viewport");
-  viewCtx = viewport.getContext('2d');
-  viewport.addEventListener('mousemove', getMouse);
-  viewport.addEventListener('mouseleave', processMouseLeave);
-  viewport.addEventListener('click', processClick);
-};
-
-var disableDefaultForm = function disableDefaultForm(e) {
+var hideSuccess = function hideSuccess(e) {
   e.preventDefault();
-  return false;
+  handleSuccess("", true);
 };
 
-var RoomWindow = function RoomWindow(props) {
+var hideError = function hideError(e) {
+  e.preventDefault();
+  handleError("", true);
+};
 
-  if (props.renderEmpty) {
-    return React.createElement("div", null);
+var SuccessMessage = function SuccessMessage(props) {
+
+  var className = "alert alert-dismissable alert-success";
+
+  if (props.hide) {
+    className = className + " hidden";
   }
-
-  var rooms = props.rooms;
-
-  if (rooms.length === 0) {
-    rooms = [{ id: "No Rooms Available", count: 0 }];
-  };
-
-  var roomOptions = rooms.map(function (room) {
-    var bgColor = "bg-secondary";
-    return React.createElement(
-      "a",
-      { href: "#", className: "list-group-item list-group-item-action " + bgColor,
-        "data-room": room.id, onClick: onRoomSelect },
-      room.id,
-      " ",
-      room.count,
-      "/2"
-    );
-  });
 
   return React.createElement(
     "div",
-    { id: "roomSelect" },
+    { className: className },
     React.createElement(
-      "h1",
-      null,
-      "Game Select"
+      "a",
+      { href: "#", className: "close", onClick: hideSuccess },
+      "\xD7"
     ),
-    React.createElement("hr", null),
-    React.createElement(
-      "form",
-      {
-        id: "roomForm", name: "roomForm",
-        action: "#room",
-        onSubmit: disableDefaultForm,
-        method: "POST",
-        className: "roomForm"
-      },
-      React.createElement(
-        "fieldset",
-        null,
-        React.createElement(
-          "div",
-          { className: "form-group text-centered" },
-          React.createElement(
-            "button",
-            { onClick: createRoom, className: "btn btn-lg btn-primary" },
-            "Create New Game"
-          )
-        ),
-        React.createElement(
-          "div",
-          { className: "form-group" },
-          React.createElement(
-            "div",
-            { className: "input-group" },
-            React.createElement("input", { id: "roomName", type: "text", className: "form-control", placeholder: "roomcode123" }),
-            React.createElement(
-              "span",
-              { className: "input-group-btn" },
-              React.createElement(
-                "button",
-                { onClick: joinRoom, className: "btn btn-lg btn-success" },
-                "Join Game"
-              )
-            )
-          )
-        ),
-        React.createElement(
-          "div",
-          { className: "form-group" },
-          React.createElement(
-            "h2",
-            null,
-            "Existing Games"
-          ),
-          React.createElement(
-            "div",
-            { className: "list-group", id: "roomOptions", onClick: onRoomSelect },
-            roomOptions
-          )
-        )
-      )
-    )
+    "Success: ",
+    props.message
   );
 };
 
-var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
-  ReactDOM.render(React.createElement(RoomWindow, { rooms: rooms, renderEmpty: renderEmpty }), document.querySelector("#room"));
-};
-
 var ErrorMessage = function ErrorMessage(props) {
+
+  var className = "alert alert-dismissible alert-danger";
+
+  if (props.hide) {
+    className = className + " hidden";
+  }
+
   return React.createElement(
     "div",
-    { className: "alert alert-dismissible alert-danger" },
+    { className: className },
     React.createElement(
       "a",
-      { href: "#", className: "close", "data-dismiss": "alert" },
+      { href: "#", className: "close", onClick: hideError },
       "\xD7"
     ),
     "Error: ",
@@ -398,10 +319,52 @@ var ErrorMessage = function ErrorMessage(props) {
   );
 };
 
-var handleError = function handleError(message) {
-  //$("#errorMessage").text(message);
-  //$("#errorMessage").animate({ width: 'toggle' }, 350);
-  ReactDOM.render(React.createElement(ErrorMessage, { message: message }), document.querySelector("#errorMessage"));
+var successMessage = "";
+var successRepeatCount = 1;
+
+var handleSuccess = function handleSuccess(message, hide) {
+
+  if (!hide) {
+    handleError("", true);
+  }
+
+  var msg = message;
+
+  if (successMessage === message) {
+    successRepeatCount++;
+    msg = message + " (x" + successRepeatCount + ")";
+  } else {
+    successMessage = msg;
+    successRepeatCount = 1;
+  }
+
+  ReactDOM.render(React.createElement(SuccessMessage, { message: msg, hide: hide }), document.querySelector("#successMessage"));
+
+  $('html, body').scrollTop(0);
+};
+
+var errorMessage = "";
+var errorRepeatCount = 1;
+
+var handleError = function handleError(message, hide) {
+
+  if (!hide) {
+    handleSuccess("", true);
+  }
+
+  var msg = message;
+
+  if (errorMessage === message) {
+    errorRepeatCount++;
+    msg = message + " (x" + errorRepeatCount + ")";
+  } else {
+    errorMessage = msg;
+    errorRepeatCount = 1;
+  }
+
+  ReactDOM.render(React.createElement(ErrorMessage, { message: msg, hide: hide }), document.querySelector("#errorMessage"));
+
+  $('html, body').scrollTop(0);
 };
 
 var redirect = function redirect(response) {

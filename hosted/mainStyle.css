@@ -22,6 +22,7 @@ body, html {
   overflow: auto;
 }
 
+
 .row-centered {
   align-content: center;
 }
@@ -32,6 +33,11 @@ body, html {
 
 #appContainer {
   max-width: 95%;
+}
+
+#gameHistoryList {
+  max-height: 500px;
+  overflow: auto;
 }
 
 .input-group-btn button {
@@ -72,4 +78,17 @@ body, html {
 
 .aboutPara{
   margin-top: 10px;
+}
+
+.gameHistory {
+  width: 50%;
+  height: 100%;
+}
+
+.gameHistory figure {
+  display: inline-block;
+}
+
+.gameHistory figcaption {
+  text-align: center;
 }

@@ -21,7 +21,7 @@ const processClick = (e) => {
       case "playCard":
         const playerHand = getPlayerHand();
         
-        if(selectedCard.name === "blast" && !blastSelect){
+        if(selectedCard.name === "blast" && !blastSelect && playerStatus === gameState.turnOwner){
           blastSelect = true;
           playerBlastCard = selectedCard;
           selectedCard = null;
@@ -124,7 +124,7 @@ const checkCardCollisions = (cardCollection, selectPlayer) => {
     }
     
     selectedCard = newSelection;
-    selectCard(selectedCard, selectPlayer, NULL_FUNC);
+    selectCard(selectedCard, selectPlayer, false, NULL_FUNC);
   } else if(!newSelection && selectedCard !== null) {
     unselectCard(selectedCard, NULL_FUNC);
     selectedCard = null;
@@ -177,6 +177,14 @@ const loadBladeCards = (cardImages) => {
     }
     
     image.src = cardImage.src;
+  }
+};
+
+const notifyGameData = (data) => {
+  if(data.saved){
+    handleSuccess("Game result successfully stored on server! (Check profile page)");
+  } else {
+    handleError("Game result could not be stored! (contact server admin)");
   }
 };
 
@@ -475,10 +483,25 @@ const pickFromDeck = (data) => {
 const splicePlayerCard = (cardSet, index) => {
   cardSet.splice(index, 1);
   cardSet.reverse();
+  
+  //Reset cards to their original position (cancel selection)
+  for(let i = 0; i < cardSet.length; i++){
+    const card = cardSet[i];
+    
+    if(selectedCard === card){
+      card.cancelAnimation();
+      selectedCard = null;
+    }
+    
+    card.x = card.originalLocation.x;
+    card.y = card.originalLocation.y;
+  }
+  
   flushCards(cardSet, 770, true, false, true, () => { 
     for(let i = 0; i < cardSet.length; i++){
       const card = cardSet[i];
-      card.originalLocation = {x: card.x, y: card.y};
+      card.x = card.originalLocation.x;
+      card.y = card.originalLocation.y;
     }
   });
 };
@@ -489,7 +512,8 @@ const spliceOpponentCard = (cardSet, index) => {
   flushCards(cardSet, 70, false, false, true, () => { 
     for(let i = 0; i < cardSet.length; i++){
       const card = cardSet[i];
-      card.originalLocation = {x: card.x, y: card.y};
+      card.x = card.originalLocation.x;
+      card.y = card.originalLocation.y;
     }
   });
 };
@@ -502,8 +526,6 @@ const playCard = (data) => {
   const cardSet = deck[data.cardSet];
   const card = cardSet[data.index];
   
-  console.log(data);
-  
   gameState.waiting = false;
   
   if(selectedCard === card){
@@ -515,7 +537,7 @@ const playCard = (data) => {
   if(deck[data.cardSet] === getPlayerHand()){
     switch(card.name){
       case "bolt":
-        selectCard(card, true, () => {
+        selectCard(card, true, true, () => {
           splicePlayerCard(cardSet, data.index);
         });
         const opponentField = getOpponentField();
@@ -523,7 +545,7 @@ const playCard = (data) => {
         startCardFlip([target], false);
         break;
       case "mirror":
-        selectCard(card, true, () => {
+        selectCard(card, true, true, () => {
           splicePlayerCard(cardSet, data.index);
         });
         const temp = getPlayerField();
@@ -541,7 +563,7 @@ const playCard = (data) => {
         break;
       case "blast":
         if(data.blastIndex > -1 ){
-          selectCard(card, true, () => {
+          selectCard(card, true, true, () => {
             const opponentHand = getOpponentHand();
             spliceOpponentCard(opponentHand, data.blastIndex);
             splicePlayerCard(cardSet, data.index);
@@ -552,7 +574,7 @@ const playCard = (data) => {
         const playerField = getPlayerField();
         const affectedCard = playerField[playerField.length - 1];
         if(!affectedCard.isRevealed()){
-          selectCard(card, true, () => {
+          selectCard(card, true, true, () => {
             splicePlayerCard(cardSet, data.index);
           });
           startCardFlip([affectedCard], false);
@@ -574,7 +596,7 @@ const playCard = (data) => {
     
     switch(data.name){
       case "bolt":
-        selectCard(card, true, () => {
+        selectCard(card, true, true, () => {
           startCardFlip([card], false, () => {
             const playerField = getPlayerField();
             const target = playerField[playerField.length - 1];
@@ -587,7 +609,7 @@ const playCard = (data) => {
         
         break;
       case "mirror":
-        selectCard(card, true, () => {
+        selectCard(card, true, true, () => {
           startCardFlip([card], false, () => {
             const temp = getPlayerField();
             if(playerStatus === 'player1'){
@@ -607,7 +629,7 @@ const playCard = (data) => {
         break;
       case "blast":
         if(data.blastIndex > -1 ){
-          selectCard(card, false, () => {
+          selectCard(card, false, true, () => {
             startCardFlip([card], false, () => {
               const playerHand = getPlayerHand();
               spliceOpponentCard(cardSet, data.index);
@@ -620,7 +642,7 @@ const playCard = (data) => {
         const opponentField = getOpponentField();
         const affectedCard = opponentField[opponentField.length - 1];
         if(!affectedCard.isRevealed()){
-          selectCard(card, true, () => {
+          selectCard(card, true, true, () => {
             startCardFlip([affectedCard], false, () => {
               spliceOpponentCard(cardSet, data.index);
             });
@@ -657,6 +679,11 @@ const endGame = () => {
 };
 
 const updateGamestate = (data) => {
+  
+  if(!data){
+    return;
+  }
+  
   const keys = Object.keys(data);
   
   gameState.waiting = false;
@@ -719,7 +746,7 @@ const clearFields = () => {
   }
 }
 
-const selectCard = (card, playerSelect, callback) => {
+const selectCard = (card, playerSelect, sealBond, callback) => {
   let yMod = Math.cos(card.radians) * 60;
   let xMod = Math.sin(card.radians) * 60;
   if(!playerSelect){
@@ -735,10 +762,15 @@ const selectCard = (card, playerSelect, callback) => {
     }, false
   );
   
-  card.bindAnimation(moveAnim, callback);
+  if(card.sealed){
+    return;
+  }
+  
+  card.bindAnimation(moveAnim, callback, sealBond ? true : false);
 };
 
 const unselectCard = (card, callback) => {
+  
   const moveAnim = new Animation(
     {
       begin: 0,
@@ -747,6 +779,10 @@ const unselectCard = (card, callback) => {
       propsEnd: {x: card.originalLocation.x, y: card.originalLocation.y, hueRotate: 0},
     }, false
   );
+  
+  if(card.sealed){
+    return;
+  }
   
   card.bindAnimation(moveAnim, callback);
 };
@@ -849,6 +885,9 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
       : baseLineY - Math.max(Math.pow(Math.abs(distanceFromMiddle * 6), 1.3), 6);
       
     const radians = curveDown ? distanceFromMiddle * 0.05 : distanceFromMiddle * -0.05;
+    
+    card.originalLocation.x = x;
+    card.originalLocation.y = y;
     
     const flushAnim = new Animation(
       {

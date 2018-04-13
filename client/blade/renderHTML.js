@@ -24,6 +24,42 @@ const disableDefaultForm = (e) => {
   return false;
 };
 
+const handlePasswordChange = (e) => {
+	e.preventDefault();
+	
+	if($("#newPassword").val() == '' || $("#newPassword2").val() == '' || $("#password").val() == ''){
+		handleError("All fields are required to change password.");
+		return false;
+	}
+  
+  if($("#newPassword").val() !==  $("#newPassword2").val()){
+    handleError("New password and password confirmation must match");
+    return false;
+  }
+
+  sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), () => {
+    handleSuccess("Password successfully changed!");
+  });
+	
+	return false;
+};
+
+const handleFeedback = (e) => {
+  e.preventDefault();
+  
+  if($("#feedbackName").val() == '' || $("#feedbackText").val == ''){
+    handleError("Both a name and feedback are required");
+    return false;
+  }
+  
+  sendAjax('POST', $("#feedbackForm").attr("action"), $("#feedbackForm").serialize(), () => {
+    handleSuccess("Feedback successfully submitted!");
+    $("#feedbackText").val("");
+  });
+  
+  return false;
+};
+
 const RoomWindow = (props) => {
   
   if(props.renderEmpty){
@@ -69,6 +105,7 @@ const RoomWindow = (props) => {
           </div>
           <div className="form-group">
             <h2>Existing Games</h2>
+            <hr />
             <div className="list-group" id="roomOptions" onClick={onRoomSelect}>
               {roomOptions}
             </div>
@@ -196,14 +233,14 @@ const FeedbackWindow = (props) => {
         <form
         id="feedbackForm" name="feedbackForm"
         action="/feedback"
-        onSubmit={disableDefaultForm}
+        onSubmit={handleFeedback}
         method="POST"
         >
           <fieldset>
             <div className="form-group text-centered row">
               <div className="col-sm-6">
                 <label htmlFor="name">Name:</label>
-                <input id="feedbackName" name="name" type="text" className="form-control" placeholder="Name" />
+                <input id="feedbackName" name="name" type="text" className="form-control" value={username} />
               </div>
               <div className="col-sm-6">
                 <label htmlFor="contact">Contact (Optional):</label>
@@ -237,16 +274,13 @@ const ProfileWindow = (props) => {
         <p className="lead">Profile Pic:
           <img src={profileImage} alt="profileImage" />
         </p>
-        <p className="lead">Total Games Played: 0</p>
-        <p className="lead">Wins: 0/0 [Animated Bar Green]</p>
-        <p className="lead">Losses: 0/0 [Animated Bar Red]</p>
         <hr className="my-4" />
         
         <h2>Change Password</h2>
         <form
         id="passwordChangeForm" name="passwordChangeForm"
         action="/changePassword"
-        onSubmit={disableDefaultForm}
+        onSubmit={handlePasswordChange}
         method="POST"
         >
           <fieldset>
@@ -267,9 +301,9 @@ const ProfileWindow = (props) => {
               <div className="col-sm-4"></div>
             </div>
             <div className="form-group text-centered row">
-              <label htmlFor="password" className="col-sm-3 col-form-label">Old Password:</label>
+              <label htmlFor="password" className="col-sm-3 col-form-label">Current Password:</label>
               <div className="col-sm-2">
-                <input id="password" name="password" type="password" className="form-control" placeholder="Old Password" />
+                <input id="password" name="password" type="password" className="form-control" placeholder="Current Password" />
               </div>
               <div className="col-sm-3"></div>
               <div className="col-sm-4"></div>
@@ -286,16 +320,133 @@ const ProfileWindow = (props) => {
         </form>
         <hr className="my-4" />
         
-        <h2>Game History</h2>
+        <div id="gameHistory">
+        </div>
       </div>
     </div>
   );
 };
 
+const GameHistory = (props) => {
+  
+  console.log(props.games);
+  
+  let games = props.games.sort((gameA, gameB) => {
+    const timeA = new Date(gameA.date).getTime();
+    const timeB = new Date(gameB.date).getTime();
+    return timeA - timeB;
+  });
+  
+  let wins = 0;
+  let losses = 0;
+  games = games.map((game) => {
+    
+    const date = new Date(game.date);
+    const playerProfile = game.playerIdentity === "player1" ? game.player1 : game.player2;
+    const opponentProfile = game.playerIdentity === "player1" ? game.player2 : game.player1;
+    const playerScore = game.playerIdentity === "player1" ? game.player1Score : game.player2Score;
+    const opponentScore = game.playerIdentity === "player1" ? game.player2Score : game.player1Score;
+    
+    let gameStatus;
+    let gameStatusColor;
+    
+    if(game.winner === game.playerIdentity){
+      gameStatus = "WIN";
+      gameStatusColor = "text-success";
+      wins++;
+    } else if (game.winner === "player1" || game.winner === "player2"){
+      gameStatus = "LOSS";
+      gameStatusColor = "text-danger";
+      losses++;
+    } else {
+      gameStatus = "TIE";
+      gameStatusColor = "text-warning";
+    }
+    
+    return (
+      <li className="list-group-item d-flex bg-light">
+        <div className="gameHistory">
+          <figure className="text-centered">
+            <img src={playerProfile.profileData.imageFile} alt={playerProfile.profileData.name} />
+            <figcaption>{playerProfile.username}</figcaption>
+          </figure>
+          <span> VS </span>
+          <figure className="text-centered">
+            <img src={opponentProfile.profileData.imageFile} alt={opponentProfile.profileData.name} />
+            <figcaption>{opponentProfile.username}</figcaption>
+          </figure>
+        </div>
+        <div className="gameHistory pull-right text-center">
+          <h1 className={gameStatusColor}>{gameStatus}</h1>
+          <p>{playerProfile.username}'s Score: {playerScore}</p>
+          <p>{opponentProfile.username}'s Score: {opponentScore}</p>
+          <p>Date of Game: {date.toDateString()}</p>
+        </div>
+      </li>
+    );
+  });
+  
+  const totalGameBarWidth = {width: `${(games.length / games.length) * 100}%`};
+  const winGameBarWidth = {width: `${(wins / games.length) * 100}%`};
+  const lossGameBarWidth = {width: `${(losses / games.length) * 100}%`};
+  
+  return (
+    <div>
+      <h2>Game History</h2>
+      <p className="lead">Total Games Played: <span className="text-info">{games.length}</span></p>
+      <div className="progress">
+        <div className="progress-bar progress-bar-striped progress-bar-animated bg-info"
+          role="progressbar" 
+          aria-value={games.length}
+          aria-valuemin="0"
+          aria-valuemax={games.length}
+          style={totalGameBarWidth}
+        ></div>
+      </div>
+      
+      <p className="lead aboutPara">Wins: {wins}/{games.length}</p>
+      <div className="progress">
+        <div className="progress-bar progress-bar-striped progress-bar-animated bg-success"
+          role="progressbar" 
+          aria-value={wins}
+          aria-valuemin="0"
+          aria-valuemax={games.length}
+          style={winGameBarWidth}
+        ></div>
+      </div>
+      
+      <p className="lead aboutPara">Losses: {losses}/{games.length}</p>
+      <div className="progress">
+        <div className="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+          role="progressbar" 
+          aria-value={losses}
+          aria-valuemin="0"
+          aria-valuemax={games.length}
+          style={lossGameBarWidth}
+        ></div>
+      </div>
+      <br />
+      
+      <div id="gameHistoryList">
+        <ul className="list-group">
+          {games}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 const clearLeftPane = () => {
   ReactDOM.render(
     <div></div>,
     document.querySelector("#room")
+  );
+};
+
+const renderGameHistory = (games) => {
+  ReactDOM.render(
+    <GameHistory games={games} />,
+    document.querySelector("#gameHistory")
   );
 };
 
@@ -305,6 +456,10 @@ const renderProfile = () => {
       <ProfileWindow csrf={csrfToken} />,
       document.querySelector("#main")
     );
+  });
+  
+  sendAjax('GET', '/getGameHistory', null, (data) => {
+    renderGameHistory(data.data);
   });
   
   clearLeftPane();

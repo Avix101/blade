@@ -130,6 +130,7 @@ const playCard = (roomId, status, index, blastIndex, callback) => {
   let blast = blastIndex;
   const opponentStatus = status === 'player1' ? 'player2' : 'player1';
   if (!blast || !validateCard(roomId, opponentStatus, blast)) {
+    console.log('hit');
     blast = 0;
   }
 

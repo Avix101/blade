@@ -83,6 +83,41 @@ const signup = (request, response) => {
   });
 };
 
+const updatePassword = (request, response) => {
+  const req = request;
+  const res = response;
+
+  req.body.newPassword = `${req.body.newPassword}`;
+  req.body.newPassword2 = `${req.body.newPassword2}`;
+  req.body.password = `${req.body.password}`;
+  const { username } = req.session.account;
+
+  if (req.body.newPassword !== req.body.newPassword2) {
+    return res.status(400).json({ error: 'Password and confirmation password must match' });
+  }
+
+  return Account.AccountModel.authenticate(username, req.body.password, (err, account) => {
+    if (err || !account) {
+      return res.status(401).json({ error: 'Wrong current password' });
+    }
+
+    return Account.AccountModel.generateHash(req.body.newPassword, (salt, hash) => {
+      const acc = account;
+      acc.password = hash;
+      acc.salt = salt;
+
+      const savePromise = acc.save();
+
+      savePromise.then(() => {
+        req.session.account = Account.AccountModel.toAPI(account);
+        res.status(204).send();
+      });
+
+      savePromise.catch(() => res.status(500).json({ error: 'Password could not be updated.' }));
+    });
+  });
+};
+
 const getToken = (request, response) => {
   const req = request;
   const res = response;
@@ -99,5 +134,6 @@ module.exports = {
   login,
   logout,
   signup,
+  updatePassword,
   getToken,
 };

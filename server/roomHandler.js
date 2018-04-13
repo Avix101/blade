@@ -28,9 +28,11 @@ const joinRoom = (roomId, sock) => {
   }
 
   const socket = sock;
-  socket.leave(socket.roomJoined);
-  socket.join(roomId);
-  socket.roomJoined = roomId;
+  if (socket.roomJoined !== roomId) {
+    socket.leave(socket.roomJoined);
+    socket.join(roomId);
+    socket.roomJoined = roomId;
+  }
 
   const room = rooms[roomId];
   const playerCount = getPlayerCount(roomId);

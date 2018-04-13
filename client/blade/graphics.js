@@ -66,8 +66,6 @@ const drawScore = (playerPoints, opponentPoints) => {
   const opponentWidth = prepCtx.measureText(opponentPoints).width;
   const halfWidth = (prepCanvas.width / 2) - 3;
   
-  console.log
-  
   const opponentGradient = prepCtx.createLinearGradient(0, 355, 0, 427);
   const playerGradient = prepCtx.createLinearGradient(0, 700, 0, 772);
   playerGradient.addColorStop(0, "white");
@@ -102,6 +100,7 @@ const drawTurnIndicator = () => {
     prepCtx.fillStyle = "red";
     prepCtx.fillText("Opponent's Turn!", 1400, 400);
   }
+  prepCtx.restore();
 };
 
 const drawGameResult = () => {

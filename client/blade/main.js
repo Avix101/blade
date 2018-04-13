@@ -14,6 +14,7 @@ let playerStatus;
 let blastSelect = false;
 let playerBlastCard;
 let inRoom = false;
+let selectionEnabled = true;
 const gameState = {
   turnType: "pickFromDeck",
   turnOwner: null,
@@ -111,6 +112,7 @@ const init = () => {
   socket.on('playCard', playCard);
   socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
+  socket.on('gamedata', notifyGameData);
   
   //Eventually switch to server call to load cards
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);

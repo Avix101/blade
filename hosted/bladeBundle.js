@@ -103,11 +103,17 @@ var Card = function () {
     this.originalLocation = location;
     //this.queuedAnimations = [];
     this.animCallback = null;
+    this.sealed = false;
   }
 
   _createClass(Card, [{
     key: "bindAnimation",
-    value: function bindAnimation(animation, callback) {
+    value: function bindAnimation(animation, callback, seal) {
+
+      if (seal) {
+        this.sealed = seal;
+      }
+
       this.animation = animation;
       this.animation.bind(new Date().getTime());
 
@@ -249,8 +255,6 @@ var drawScore = function drawScore(playerPoints, opponentPoints) {
   var opponentWidth = prepCtx.measureText(opponentPoints).width;
   var halfWidth = prepCanvas.width / 2 - 3;
 
-  console.log;
-
   var opponentGradient = prepCtx.createLinearGradient(0, 355, 0, 427);
   var playerGradient = prepCtx.createLinearGradient(0, 700, 0, 772);
   playerGradient.addColorStop(0, "white");
@@ -285,6 +289,7 @@ var drawTurnIndicator = function drawTurnIndicator() {
     prepCtx.fillStyle = "red";
     prepCtx.fillText("Opponent's Turn!", 1400, 400);
   }
+  prepCtx.restore();
 };
 
 var drawGameResult = function drawGameResult() {
@@ -410,6 +415,7 @@ var playerStatus = void 0;
 var blastSelect = false;
 var playerBlastCard = void 0;
 var inRoom = false;
+var selectionEnabled = true;
 var gameState = {
   turnType: "pickFromDeck",
   turnOwner: null,
@@ -513,6 +519,7 @@ var init = function init() {
   socket.on('playCard', playCard);
   socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
+  socket.on('gamedata', notifyGameData);
 
   //Eventually switch to server call to load cards
   //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
@@ -546,6 +553,42 @@ var renderGame = function renderGame(width, height) {
 
 var disableDefaultForm = function disableDefaultForm(e) {
   e.preventDefault();
+  return false;
+};
+
+var handlePasswordChange = function handlePasswordChange(e) {
+  e.preventDefault();
+
+  if ($("#newPassword").val() == '' || $("#newPassword2").val() == '' || $("#password").val() == '') {
+    handleError("All fields are required to change password.");
+    return false;
+  }
+
+  if ($("#newPassword").val() !== $("#newPassword2").val()) {
+    handleError("New password and password confirmation must match");
+    return false;
+  }
+
+  sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), function () {
+    handleSuccess("Password successfully changed!");
+  });
+
+  return false;
+};
+
+var handleFeedback = function handleFeedback(e) {
+  e.preventDefault();
+
+  if ($("#feedbackName").val() == '' || $("#feedbackText").val == '') {
+    handleError("Both a name and feedback are required");
+    return false;
+  }
+
+  sendAjax('POST', $("#feedbackForm").attr("action"), $("#feedbackForm").serialize(), function () {
+    handleSuccess("Feedback successfully submitted!");
+    $("#feedbackText").val("");
+  });
+
   return false;
 };
 
@@ -630,6 +673,7 @@ var RoomWindow = function RoomWindow(props) {
             null,
             "Existing Games"
           ),
+          React.createElement("hr", null),
           React.createElement(
             "div",
             { className: "list-group", id: "roomOptions", onClick: onRoomSelect },
@@ -880,7 +924,7 @@ var FeedbackWindow = function FeedbackWindow(props) {
         {
           id: "feedbackForm", name: "feedbackForm",
           action: "/feedback",
-          onSubmit: disableDefaultForm,
+          onSubmit: handleFeedback,
           method: "POST"
         },
         React.createElement(
@@ -897,7 +941,7 @@ var FeedbackWindow = function FeedbackWindow(props) {
                 { htmlFor: "name" },
                 "Name:"
               ),
-              React.createElement("input", { id: "feedbackName", name: "name", type: "text", className: "form-control", placeholder: "Name" })
+              React.createElement("input", { id: "feedbackName", name: "name", type: "text", className: "form-control", value: username })
             ),
             React.createElement(
               "div",
@@ -962,21 +1006,6 @@ var ProfileWindow = function ProfileWindow(props) {
         "Profile Pic:",
         React.createElement("img", { src: profileImage, alt: "profileImage" })
       ),
-      React.createElement(
-        "p",
-        { className: "lead" },
-        "Total Games Played: 0"
-      ),
-      React.createElement(
-        "p",
-        { className: "lead" },
-        "Wins: 0/0 [Animated Bar Green]"
-      ),
-      React.createElement(
-        "p",
-        { className: "lead" },
-        "Losses: 0/0 [Animated Bar Red]"
-      ),
       React.createElement("hr", { className: "my-4" }),
       React.createElement(
         "h2",
@@ -988,7 +1017,7 @@ var ProfileWindow = function ProfileWindow(props) {
         {
           id: "passwordChangeForm", name: "passwordChangeForm",
           action: "/changePassword",
-          onSubmit: disableDefaultForm,
+          onSubmit: handlePasswordChange,
           method: "POST"
         },
         React.createElement(
@@ -1032,12 +1061,12 @@ var ProfileWindow = function ProfileWindow(props) {
             React.createElement(
               "label",
               { htmlFor: "password", className: "col-sm-3 col-form-label" },
-              "Old Password:"
+              "Current Password:"
             ),
             React.createElement(
               "div",
               { className: "col-sm-2" },
-              React.createElement("input", { id: "password", name: "password", type: "password", className: "form-control", placeholder: "Old Password" })
+              React.createElement("input", { id: "password", name: "password", type: "password", className: "form-control", placeholder: "Current Password" })
             ),
             React.createElement("div", { className: "col-sm-3" }),
             React.createElement("div", { className: "col-sm-4" })
@@ -1057,10 +1086,190 @@ var ProfileWindow = function ProfileWindow(props) {
         )
       ),
       React.createElement("hr", { className: "my-4" }),
+      React.createElement("div", { id: "gameHistory" })
+    )
+  );
+};
+
+var GameHistory = function GameHistory(props) {
+
+  console.log(props.games);
+
+  var games = props.games.sort(function (gameA, gameB) {
+    var timeA = new Date(gameA.date).getTime();
+    var timeB = new Date(gameB.date).getTime();
+    return timeA - timeB;
+  });
+
+  var wins = 0;
+  var losses = 0;
+  games = games.map(function (game) {
+
+    var date = new Date(game.date);
+    var playerProfile = game.playerIdentity === "player1" ? game.player1 : game.player2;
+    var opponentProfile = game.playerIdentity === "player1" ? game.player2 : game.player1;
+    var playerScore = game.playerIdentity === "player1" ? game.player1Score : game.player2Score;
+    var opponentScore = game.playerIdentity === "player1" ? game.player2Score : game.player1Score;
+
+    var gameStatus = void 0;
+    var gameStatusColor = void 0;
+
+    if (game.winner === game.playerIdentity) {
+      gameStatus = "WIN";
+      gameStatusColor = "text-success";
+      wins++;
+    } else if (game.winner === "player1" || game.winner === "player2") {
+      gameStatus = "LOSS";
+      gameStatusColor = "text-danger";
+      losses++;
+    } else {
+      gameStatus = "TIE";
+      gameStatusColor = "text-warning";
+    }
+
+    return React.createElement(
+      "li",
+      { className: "list-group-item d-flex bg-light" },
       React.createElement(
-        "h2",
-        null,
-        "Game History"
+        "div",
+        { className: "gameHistory" },
+        React.createElement(
+          "figure",
+          { className: "text-centered" },
+          React.createElement("img", { src: playerProfile.profileData.imageFile, alt: playerProfile.profileData.name }),
+          React.createElement(
+            "figcaption",
+            null,
+            playerProfile.username
+          )
+        ),
+        React.createElement(
+          "span",
+          null,
+          " VS "
+        ),
+        React.createElement(
+          "figure",
+          { className: "text-centered" },
+          React.createElement("img", { src: opponentProfile.profileData.imageFile, alt: opponentProfile.profileData.name }),
+          React.createElement(
+            "figcaption",
+            null,
+            opponentProfile.username
+          )
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "gameHistory pull-right text-center" },
+        React.createElement(
+          "h1",
+          { className: gameStatusColor },
+          gameStatus
+        ),
+        React.createElement(
+          "p",
+          null,
+          playerProfile.username,
+          "'s Score: ",
+          playerScore
+        ),
+        React.createElement(
+          "p",
+          null,
+          opponentProfile.username,
+          "'s Score: ",
+          opponentScore
+        ),
+        React.createElement(
+          "p",
+          null,
+          "Date of Game: ",
+          date.toDateString()
+        )
+      )
+    );
+  });
+
+  var totalGameBarWidth = { width: games.length / games.length * 100 + "%" };
+  var winGameBarWidth = { width: wins / games.length * 100 + "%" };
+  var lossGameBarWidth = { width: losses / games.length * 100 + "%" };
+
+  return React.createElement(
+    "div",
+    null,
+    React.createElement(
+      "h2",
+      null,
+      "Game History"
+    ),
+    React.createElement(
+      "p",
+      { className: "lead" },
+      "Total Games Played: ",
+      React.createElement(
+        "span",
+        { className: "text-info" },
+        games.length
+      )
+    ),
+    React.createElement(
+      "div",
+      { className: "progress" },
+      React.createElement("div", { className: "progress-bar progress-bar-striped progress-bar-animated bg-info",
+        role: "progressbar",
+        "aria-value": games.length,
+        "aria-valuemin": "0",
+        "aria-valuemax": games.length,
+        style: totalGameBarWidth
+      })
+    ),
+    React.createElement(
+      "p",
+      { className: "lead aboutPara" },
+      "Wins: ",
+      wins,
+      "/",
+      games.length
+    ),
+    React.createElement(
+      "div",
+      { className: "progress" },
+      React.createElement("div", { className: "progress-bar progress-bar-striped progress-bar-animated bg-success",
+        role: "progressbar",
+        "aria-value": wins,
+        "aria-valuemin": "0",
+        "aria-valuemax": games.length,
+        style: winGameBarWidth
+      })
+    ),
+    React.createElement(
+      "p",
+      { className: "lead aboutPara" },
+      "Losses: ",
+      losses,
+      "/",
+      games.length
+    ),
+    React.createElement(
+      "div",
+      { className: "progress" },
+      React.createElement("div", { className: "progress-bar progress-bar-striped progress-bar-animated bg-danger",
+        role: "progressbar",
+        "aria-value": losses,
+        "aria-valuemin": "0",
+        "aria-valuemax": games.length,
+        style: lossGameBarWidth
+      })
+    ),
+    React.createElement("br", null),
+    React.createElement(
+      "div",
+      { id: "gameHistoryList" },
+      React.createElement(
+        "ul",
+        { className: "list-group" },
+        games
       )
     )
   );
@@ -1070,9 +1279,17 @@ var clearLeftPane = function clearLeftPane() {
   ReactDOM.render(React.createElement("div", null), document.querySelector("#room"));
 };
 
+var renderGameHistory = function renderGameHistory(games) {
+  ReactDOM.render(React.createElement(GameHistory, { games: games }), document.querySelector("#gameHistory"));
+};
+
 var renderProfile = function renderProfile() {
   getTokenWithCallback(function (csrfToken) {
     ReactDOM.render(React.createElement(ProfileWindow, { csrf: csrfToken }), document.querySelector("#main"));
+  });
+
+  sendAjax('GET', '/getGameHistory', null, function (data) {
+    renderGameHistory(data.data);
   });
 
   clearLeftPane();
@@ -1133,7 +1350,7 @@ var processClick = function processClick(e) {
       case "playCard":
         var playerHand = getPlayerHand();
 
-        if (selectedCard.name === "blast" && !blastSelect) {
+        if (selectedCard.name === "blast" && !blastSelect && playerStatus === gameState.turnOwner) {
           blastSelect = true;
           playerBlastCard = selectedCard;
           selectedCard = null;
@@ -1236,7 +1453,7 @@ var checkCardCollisions = function checkCardCollisions(cardCollection, selectPla
     }
 
     selectedCard = newSelection;
-    selectCard(selectedCard, selectPlayer, NULL_FUNC);
+    selectCard(selectedCard, selectPlayer, false, NULL_FUNC);
   } else if (!newSelection && selectedCard !== null) {
     unselectCard(selectedCard, NULL_FUNC);
     selectedCard = null;
@@ -1300,6 +1517,14 @@ var loadBladeCards = function loadBladeCards(cardImages) {
 
   for (var i = 0; i < cardImages.length; i++) {
     _loop2(i);
+  }
+};
+
+var notifyGameData = function notifyGameData(data) {
+  if (data.saved) {
+    handleSuccess("Game result successfully stored on server! (Check profile page)");
+  } else {
+    handleError("Game result could not be stored! (contact server admin)");
   }
 };
 
@@ -1579,10 +1804,25 @@ var pickFromDeck = function pickFromDeck(data) {
 var splicePlayerCard = function splicePlayerCard(cardSet, index) {
   cardSet.splice(index, 1);
   cardSet.reverse();
+
+  //Reset cards to their original position (cancel selection)
+  for (var i = 0; i < cardSet.length; i++) {
+    var card = cardSet[i];
+
+    if (selectedCard === card) {
+      card.cancelAnimation();
+      selectedCard = null;
+    }
+
+    card.x = card.originalLocation.x;
+    card.y = card.originalLocation.y;
+  }
+
   flushCards(cardSet, 770, true, false, true, function () {
-    for (var i = 0; i < cardSet.length; i++) {
-      var card = cardSet[i];
-      card.originalLocation = { x: card.x, y: card.y };
+    for (var _i = 0; _i < cardSet.length; _i++) {
+      var _card2 = cardSet[_i];
+      _card2.x = _card2.originalLocation.x;
+      _card2.y = _card2.originalLocation.y;
     }
   });
 };
@@ -1593,7 +1833,8 @@ var spliceOpponentCard = function spliceOpponentCard(cardSet, index) {
   flushCards(cardSet, 70, false, false, true, function () {
     for (var i = 0; i < cardSet.length; i++) {
       var card = cardSet[i];
-      card.originalLocation = { x: card.x, y: card.y };
+      card.x = card.originalLocation.x;
+      card.y = card.originalLocation.y;
     }
   });
 };
@@ -1606,8 +1847,6 @@ var playCard = function playCard(data) {
   var cardSet = deck[data.cardSet];
   var card = cardSet[data.index];
 
-  console.log(data);
-
   gameState.waiting = false;
 
   if (selectedCard === card) {
@@ -1619,7 +1858,7 @@ var playCard = function playCard(data) {
   if (deck[data.cardSet] === getPlayerHand()) {
     switch (card.name) {
       case "bolt":
-        selectCard(card, true, function () {
+        selectCard(card, true, true, function () {
           splicePlayerCard(cardSet, data.index);
         });
         var opponentField = getOpponentField();
@@ -1627,7 +1866,7 @@ var playCard = function playCard(data) {
         startCardFlip([target], false);
         break;
       case "mirror":
-        selectCard(card, true, function () {
+        selectCard(card, true, true, function () {
           splicePlayerCard(cardSet, data.index);
         });
         var temp = getPlayerField();
@@ -1645,7 +1884,7 @@ var playCard = function playCard(data) {
         break;
       case "blast":
         if (data.blastIndex > -1) {
-          selectCard(card, true, function () {
+          selectCard(card, true, true, function () {
             var opponentHand = getOpponentHand();
             spliceOpponentCard(opponentHand, data.blastIndex);
             splicePlayerCard(cardSet, data.index);
@@ -1656,7 +1895,7 @@ var playCard = function playCard(data) {
         var playerField = getPlayerField();
         var affectedCard = playerField[playerField.length - 1];
         if (!affectedCard.isRevealed()) {
-          selectCard(card, true, function () {
+          selectCard(card, true, true, function () {
             splicePlayerCard(cardSet, data.index);
           });
           startCardFlip([affectedCard], false);
@@ -1678,7 +1917,7 @@ var playCard = function playCard(data) {
 
     switch (data.name) {
       case "bolt":
-        selectCard(card, true, function () {
+        selectCard(card, true, true, function () {
           startCardFlip([card], false, function () {
             var playerField = getPlayerField();
             var target = playerField[playerField.length - 1];
@@ -1691,7 +1930,7 @@ var playCard = function playCard(data) {
 
         break;
       case "mirror":
-        selectCard(card, true, function () {
+        selectCard(card, true, true, function () {
           startCardFlip([card], false, function () {
             var temp = getPlayerField();
             if (playerStatus === 'player1') {
@@ -1711,7 +1950,7 @@ var playCard = function playCard(data) {
         break;
       case "blast":
         if (data.blastIndex > -1) {
-          selectCard(card, false, function () {
+          selectCard(card, false, true, function () {
             startCardFlip([card], false, function () {
               var playerHand = getPlayerHand();
               spliceOpponentCard(cardSet, data.index);
@@ -1724,7 +1963,7 @@ var playCard = function playCard(data) {
         var _opponentField = getOpponentField();
         var _affectedCard = _opponentField[_opponentField.length - 1];
         if (!_affectedCard.isRevealed()) {
-          selectCard(card, true, function () {
+          selectCard(card, true, true, function () {
             startCardFlip([_affectedCard], false, function () {
               spliceOpponentCard(cardSet, data.index);
             });
@@ -1760,6 +1999,11 @@ var endGame = function endGame() {
 };
 
 var updateGamestate = function updateGamestate(data) {
+
+  if (!data) {
+    return;
+  }
+
   var keys = Object.keys(data);
 
   gameState.waiting = false;
@@ -1800,16 +2044,16 @@ var clearFields = function clearFields() {
     });
   }
 
-  for (var _i = 0; _i < opponentField.length; _i++) {
-    var _card2 = opponentField[_i];
+  for (var _i2 = 0; _i2 < opponentField.length; _i2++) {
+    var _card3 = opponentField[_i2];
     var _moveAnim = new Animation({
       begin: 0,
       timeToFinish: 600,
-      propsBegin: { x: _card2.x },
+      propsBegin: { x: _card3.x },
       propsEnd: { x: -100 }
     }, true);
 
-    _card2.bindAnimation(_moveAnim, function () {
+    _card3.bindAnimation(_moveAnim, function () {
       animateDeckWhenReady(opponentField, function () {
         gameState.clearFields = false;
         opponentField.splice(0, opponentField.length);
@@ -1818,7 +2062,7 @@ var clearFields = function clearFields() {
   }
 };
 
-var selectCard = function selectCard(card, playerSelect, callback) {
+var selectCard = function selectCard(card, playerSelect, sealBond, callback) {
   var yMod = Math.cos(card.radians) * 60;
   var xMod = Math.sin(card.radians) * 60;
   if (!playerSelect) {
@@ -1832,16 +2076,25 @@ var selectCard = function selectCard(card, playerSelect, callback) {
     propsEnd: { x: card.originalLocation.x - xMod, y: card.originalLocation.y - yMod, hueRotate: 90 }
   }, false);
 
-  card.bindAnimation(moveAnim, callback);
+  if (card.sealed) {
+    return;
+  }
+
+  card.bindAnimation(moveAnim, callback, sealBond ? true : false);
 };
 
 var unselectCard = function unselectCard(card, callback) {
+
   var moveAnim = new Animation({
     begin: 0,
     timeToFinish: 200,
     propsBegin: { x: card.x, y: card.y, hueRotate: card.hueRotate },
     propsEnd: { x: card.originalLocation.x, y: card.originalLocation.y, hueRotate: 0 }
   }, false);
+
+  if (card.sealed) {
+    return;
+  }
 
   card.bindAnimation(moveAnim, callback);
 };
@@ -1927,7 +2180,7 @@ var endCardFlip = function endCardFlip(card, cardCollection, width, xDiff, yDiff
 var flushCards = function flushCards(cardCollection, baseLineY, curveDown, sequentially, reverse, callback) {
   //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card3 = cardCollection[i];
+    var _card4 = cardCollection[i];
     var x = 1100 + 100 * (cardCollection.length / 2 - 1 - i);
 
     var middle = Math.floor(cardCollection.length / 2);
@@ -1945,15 +2198,18 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
 
     var radians = curveDown ? distanceFromMiddle * 0.05 : distanceFromMiddle * -0.05;
 
+    _card4.originalLocation.x = x;
+    _card4.originalLocation.y = y;
+
     var flushAnim = new Animation({
       begin: sequentially ? (cardCollection.length - 1 - i) * 200 : 0,
       timeToFinish: sequentially ? 600 + (cardCollection.length - 1 - i) * 100 : 600,
-      propsBegin: { x: _card3.x, y: _card3.y, radians: _card3.radians },
+      propsBegin: { x: _card4.x, y: _card4.y, radians: _card4.radians },
       propsEnd: { x: x, y: y, radians: radians }
     }, true);
 
     //anims.push(flushAnim);
-    _card3.bindAnimation(flushAnim, function () {
+    _card4.bindAnimation(flushAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
       //animateDeckWhenReady(cardCollection, () => {
       //startCardFlip(cardCollection);
@@ -1972,18 +2228,18 @@ var stackCards = function stackCards(cardCollection, expandRight, time, callback
   var baseX = expandRight ? 1080 : 670;
   var baseY = expandRight ? 535 : 300;
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card4 = cardCollection[i];
+    var _card5 = cardCollection[i];
 
     var x = expandRight ? baseX + 40 * i : baseX - 40 * i;
 
     var stackAnim = new Animation({
       begin: 0,
       timeToFinish: time,
-      propsBegin: { x: _card4.x, y: _card4.y, radians: _card4.radians },
+      propsBegin: { x: _card5.x, y: _card5.y, radians: _card5.radians },
       propsEnd: { x: x, y: baseY, radians: expandRight ? 0 : Math.PI }
     }, true);
 
-    _card4.bindAnimation(stackAnim, function () {
+    _card5.bindAnimation(stackAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
@@ -1991,58 +2247,138 @@ var stackCards = function stackCards(cardCollection, expandRight, time, callback
 
 var foldInCards = function foldInCards(cardCollection, x, y, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card5 = cardCollection[i];
+    var _card6 = cardCollection[i];
 
     var foldInAnim = new Animation({
       begin: 0,
       timeToFinish: 300,
-      propsBegin: { x: _card5.x, y: _card5.y, radians: _card5.radians },
+      propsBegin: { x: _card6.x, y: _card6.y, radians: _card6.radians },
       propsEnd: { x: x, y: y, radians: 0 }
     }, true);
 
-    _card5.bindAnimation(foldInAnim, function () {
+    _card6.bindAnimation(foldInAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
 };
 "use strict";
 
-var ErrorMessage = function ErrorMessage(props) {
-	return React.createElement(
-		"div",
-		{ className: "alert alert-dismissible alert-danger" },
-		React.createElement(
-			"a",
-			{ href: "#", className: "close", "data-dismiss": "alert" },
-			"\xD7"
-		),
-		"Error: ",
-		props.message
-	);
+var hideSuccess = function hideSuccess(e) {
+  e.preventDefault();
+  handleSuccess("", true);
 };
 
-var handleError = function handleError(message) {
-	//$("#errorMessage").text(message);
-	//$("#errorMessage").animate({ width: 'toggle' }, 350);
-	ReactDOM.render(React.createElement(ErrorMessage, { message: message }), document.querySelector("#errorMessage"));
+var hideError = function hideError(e) {
+  e.preventDefault();
+  handleError("", true);
+};
+
+var SuccessMessage = function SuccessMessage(props) {
+
+  var className = "alert alert-dismissable alert-success";
+
+  if (props.hide) {
+    className = className + " hidden";
+  }
+
+  return React.createElement(
+    "div",
+    { className: className },
+    React.createElement(
+      "a",
+      { href: "#", className: "close", onClick: hideSuccess },
+      "\xD7"
+    ),
+    "Success: ",
+    props.message
+  );
+};
+
+var ErrorMessage = function ErrorMessage(props) {
+
+  var className = "alert alert-dismissible alert-danger";
+
+  if (props.hide) {
+    className = className + " hidden";
+  }
+
+  return React.createElement(
+    "div",
+    { className: className },
+    React.createElement(
+      "a",
+      { href: "#", className: "close", onClick: hideError },
+      "\xD7"
+    ),
+    "Error: ",
+    props.message
+  );
+};
+
+var successMessage = "";
+var successRepeatCount = 1;
+
+var handleSuccess = function handleSuccess(message, hide) {
+
+  if (!hide) {
+    handleError("", true);
+  }
+
+  var msg = message;
+
+  if (successMessage === message) {
+    successRepeatCount++;
+    msg = message + " (x" + successRepeatCount + ")";
+  } else {
+    successMessage = msg;
+    successRepeatCount = 1;
+  }
+
+  ReactDOM.render(React.createElement(SuccessMessage, { message: msg, hide: hide }), document.querySelector("#successMessage"));
+
+  $('html, body').scrollTop(0);
+};
+
+var errorMessage = "";
+var errorRepeatCount = 1;
+
+var handleError = function handleError(message, hide) {
+
+  if (!hide) {
+    handleSuccess("", true);
+  }
+
+  var msg = message;
+
+  if (errorMessage === message) {
+    errorRepeatCount++;
+    msg = message + " (x" + errorRepeatCount + ")";
+  } else {
+    errorMessage = msg;
+    errorRepeatCount = 1;
+  }
+
+  ReactDOM.render(React.createElement(ErrorMessage, { message: msg, hide: hide }), document.querySelector("#errorMessage"));
+
+  $('html, body').scrollTop(0);
 };
 
 var redirect = function redirect(response) {
-	//$("#domoMessage").animate({ width: 'hide' }, 350);
-	window.location = response.redirect;
+  //$("#domoMessage").animate({ width: 'hide' }, 350);
+  window.location = response.redirect;
 };
 
 var sendAjax = function sendAjax(type, action, data, success) {
-	$.ajax({
-		cache: false,
-		type: type,
-		url: action,
-		data: data,
-		dataType: "json",
-		success: success,
-		error: function error(xhr, status, _error) {
-			var messageObj = JSON.parse(xhr.responseText);
-			handleError(messageObj.error);
-		}
-	});
+  $.ajax({
+    cache: false,
+    type: type,
+    url: action,
+    data: data,
+    dataType: "json",
+    success: success,
+    error: function error(xhr, status, _error) {
+      var messageObj = JSON.parse(xhr.responseText);
+      handleError(messageObj.error);
+    }
+  });
 };

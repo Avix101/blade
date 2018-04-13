@@ -224,7 +224,9 @@ class Game {
 
     setTimeout(() => {
       this.queueUpdate(() => {
+        socketHandler.saveGame(this.room, this.gameState);
         socketHandler.sendGameState(this.room);
+        socketHandler.killGame(this.room);
       });
     }, 50);
   }
@@ -293,7 +295,6 @@ class Game {
         break;
       }
       case 'blast': {
-        console.log(opponentHand[blastIndex]);
         opponentHand.splice(blastIndex, 1);
         break;
       }

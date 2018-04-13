@@ -5,6 +5,10 @@ const xxh = require('xxhashjs');
 const blade = require('./blade');
 const roomHandler = require('./roomHandler.js');
 
+const models = require('./models');
+
+const { GameResult } = models;
+
 let io;
 
 const verifyGameIntegrity = roomId => blade.gameExists(roomId);
@@ -21,6 +25,38 @@ const verifyDataIntegrity = (data, expectedKeys) => {
     verified = data[key] !== undefined;
   }
   return verified;
+};
+
+const saveGame = (roomId, gameState) => {
+  console.log('saving game');
+  const sockets = roomHandler.getSockets(roomId);
+  const [socket1, socket2] = sockets;
+  const socket1Status = roomHandler.getPlayerStatus(socket1);
+  const socket2Status = roomHandler.getPlayerStatus(socket2);
+  const player1 = socket1Status === 'player1' ? socket1 : socket2;
+  const player2 = socket2Status === 'player2' ? socket2 : socket1;
+
+  const gameData = {
+    player1Id: player1.handshake.session.account._id,
+    player2Id: player2.handshake.session.account._id,
+    player1Score: gameState.player1Points,
+    player2Score: gameState.player2Points,
+    winner: gameState.winner,
+  };
+
+  const newGameResult = new GameResult.GameResultModel(gameData);
+
+  const savePromise = newGameResult.save();
+
+  savePromise.then(() => {
+    socket1.emit('gamedata', { saved: true });
+    socket2.emit('gamedata', { saved: true });
+  });
+
+  savePromise.catch(() => {
+    socket1.emit('gamedata', { saved: false });
+    socket2.emit('gamedata', { saved: false });
+  });
 };
 
 const init = (ioInstance) => {
@@ -116,11 +152,14 @@ const init = (ioInstance) => {
 
     socket.on('pickFromDeck', () => {
       if (!verifyGameIntegrity(socket.roomJoined)) {
+        console.log('broken integrity');
         return;
       }
 
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
       if (blade.pickFromDeck(socket.roomJoined, status, (card) => {
+        console.log('callback');
+        console.log(socket.roomJoined);
         io.sockets.in(socket.roomJoined).emit('pickFromDeck', { player: status, card });
       })) {
         socket.emit('turnAccepted');
@@ -158,15 +197,17 @@ const init = (ioInstance) => {
     socket.on('disconnect', () => {
       const roomId = socket.roomJoined;
       const status = roomHandler.getPlayerStatus(socket.roomJoined, socket);
-      if (roomHandler.leaveRoom(socket.roomJoined, socket)) {
-        if (blade.gameExists(socket.roomJoined)) {
-          blade.resolveDisconnect(roomId, status, () => {
-            const gameState = blade.getGameState(roomId);
-            blade.killGame(roomId);
-            io.sockets.in(roomId).emit('gamestate', gameState);
-          });
-        }
+
+      if (blade.gameExists(socket.roomJoined)) {
+        blade.resolveDisconnect(roomId, status, () => {
+          const gameState = blade.getGameState(socket.roomJoined);
+          saveGame(socket.roomJoined, gameState);
+          blade.killGame(roomId);
+          io.sockets.in(roomId).emit('gamestate', gameState);
+        });
       }
+
+      roomHandler.leaveRoom(socket.roomJoined, socket);
     });
   });
 };
@@ -179,5 +220,15 @@ const sendGameState = (roomId, callback) => {
   }
 };
 
+const killGame = (roomId) => {
+  if (roomHandler.destroyRoom(roomId)) {
+    if (blade.gameExists(roomId)) {
+      blade.killGame(roomId);
+    }
+  }
+};
+
 module.exports.init = init;
 module.exports.sendGameState = sendGameState;
+module.exports.killGame = killGame;
+module.exports.saveGame = saveGame;

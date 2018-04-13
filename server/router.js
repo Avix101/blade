@@ -22,10 +22,15 @@ const attach = (app) => {
   app.get('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
   app.post('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.login);
   app.post('/signup', mid.requiresSecure, mid.requiresLogout, controllers.Account.signup);
+  app.post('/changePassword', mid.requiresLogin, controllers.Account.updatePassword);
+  app.post('/feedback', mid.requiresLogin, controllers.Blade.submitFeedback);
   app.get('/getProfiles', mid.requiresSecure, mid.requiresLogout, controllers.Blade.getAllProfilePics);
+  app.get('/getGameHistory', mid.requiresLogin, controllers.Blade.getGameHistory);
   app.get('/logout', mid.requiresLogin, controllers.Account.logout);
   app.get('/blade', mid.requiresLogin, controllers.Blade.main);
   app.get('/', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
+
+  app.get('*', mid.notFound);
 };
 
 module.exports = {

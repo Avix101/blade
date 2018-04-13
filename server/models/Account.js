@@ -59,6 +59,22 @@ AccountSchema.statics.findByUsername = (name, callback) => {
   return AccountModel.findOne(search, callback);
 };
 
+AccountSchema.statics.findById = (id, callback) => {
+  const search = {
+    _id: id,
+  };
+
+  return AccountModel.findOne(search, callback);
+};
+
+AccountSchema.statics.findByIdMultiple = (ids, callback) => {
+  const search = {
+    _id: { $in: ids },
+  };
+
+  return AccountModel.find(search, callback);
+};
+
 AccountSchema.statics.generateHash = (password, callback) => {
   const salt = crypto.randomBytes(saltLength);
 

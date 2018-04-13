@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const sharedSession = require('express-socket.io-session');
 const RedisStore = require('connect-redis')(session);
 const url = require('url');
 const csrf = require('csurf');
@@ -57,7 +58,8 @@ const app = express();
 app.disable('x-powered-by');
 app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(session({
+
+const sessionObj = session({
   key: 'sessionid',
   store: new RedisStore({
     host: redisURL.hostname,
@@ -70,7 +72,9 @@ app.use(session({
   cookie: {
     httpOnly: true,
   },
-}));
+});
+
+app.use(sessionObj);
 
 // Set up view engine
 app.engine('handlebars', expressHandlebars({ defaultLayout: 'main' }));
@@ -99,6 +103,10 @@ const server = http.createServer(app);
 
 // Attach Socket.io lib to main server and attach custom events to Socket.io lib
 const io = socketLib(server);
+
+// Attach middleware to parse socket cookie as well
+io.use(sharedSession(sessionObj, { autoSave: true }));
+
 socketHandler.init(io);
 
 server.listen(port);

@@ -13,9 +13,15 @@ class Card {
     this.originalLocation = location;
     //this.queuedAnimations = [];
     this.animCallback = null;
+    this.sealed = false;
   };
   
-  bindAnimation(animation, callback){
+  bindAnimation(animation, callback, seal){
+    
+    if(seal){
+      this.sealed = seal;
+    }
+    
     this.animation = animation;
     this.animation.bind(new Date().getTime());
     
