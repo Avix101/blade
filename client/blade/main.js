@@ -56,6 +56,8 @@ const loadView = () => {
   const hash = window.location.hash;
   pageView = hash;
   
+  renderRightPanel();
+  
   switch(hash){
     case "#blade": {
       const dimensions = calcDisplayDimensions();

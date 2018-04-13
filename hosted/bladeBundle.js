@@ -505,6 +505,8 @@ var loadView = function loadView() {
   var hash = window.location.hash;
   pageView = hash;
 
+  renderRightPanel();
+
   switch (hash) {
     case "#blade":
       {
