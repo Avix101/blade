@@ -68,8 +68,8 @@ const saveGame = (roomId, gameState, callback) => {
     socket1.emit('gamedata', { saved: false });
     socket2.emit('gamedata', { saved: false });
   });
-  
-  if(callback){
+
+  if (callback) {
     callback();
   }
 };
