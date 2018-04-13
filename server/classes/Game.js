@@ -224,9 +224,10 @@ class Game {
 
     setTimeout(() => {
       this.queueUpdate(() => {
-        socketHandler.saveGame(this.room, this.gameState);
-        socketHandler.sendGameState(this.room);
-        socketHandler.killGame(this.room);
+        socketHandler.saveGame(this.room, this.gameState, () => {
+          socketHandler.sendGameState(this.room);
+          socketHandler.killGame(this.room);
+        });
       });
     }, 50);
   }

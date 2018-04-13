@@ -27,12 +27,12 @@ const verifyDataIntegrity = (data, expectedKeys) => {
   return verified;
 };
 
-const saveGame = (roomId, gameState) => {
+const saveGame = (roomId, gameState, callback) => {
   console.log('saving game');
   const sockets = roomHandler.getSockets(roomId);
   const [socket1, socket2] = sockets;
-  const socket1Status = roomHandler.getPlayerStatus(socket1);
-  const socket2Status = roomHandler.getPlayerStatus(socket2);
+  const socket1Status = roomHandler.getPlayerStatus(roomId, socket1);
+  const socket2Status = roomHandler.getPlayerStatus(roomId, socket2);
   const player1 = socket1Status === 'player1' ? socket1 : socket2;
   const player2 = socket2Status === 'player2' ? socket2 : socket1;
 
@@ -68,6 +68,10 @@ const saveGame = (roomId, gameState) => {
     socket1.emit('gamedata', { saved: false });
     socket2.emit('gamedata', { saved: false });
   });
+  
+  if(callback){
+    callback();
+  }
 };
 
 const init = (ioInstance) => {
@@ -227,13 +231,15 @@ const init = (ioInstance) => {
       if (blade.gameExists(socket.roomJoined)) {
         blade.resolveDisconnect(roomId, status, () => {
           const gameState = blade.getGameState(socket.roomJoined);
-          saveGame(socket.roomJoined, gameState);
+          saveGame(socket.roomJoined, gameState, () => {
+            roomHandler.leaveRoom(socket.roomJoined, socket);
+          });
           blade.killGame(roomId);
           io.sockets.in(roomId).emit('gamestate', gameState);
         });
+      } else {
+        roomHandler.leaveRoom(socket.roomJoined, socket);
       }
-
-      roomHandler.leaveRoom(socket.roomJoined, socket);
     });
   });
 };

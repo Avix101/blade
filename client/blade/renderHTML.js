@@ -376,12 +376,12 @@ const GameHistory = (props) => {
   let games = props.games.sort((gameA, gameB) => {
     const timeA = new Date(gameA.date).getTime();
     const timeB = new Date(gameB.date).getTime();
-    return timeA - timeB;
+    return timeB - timeA;
   });
   
   let wins = 0;
   let losses = 0;
-  games = games.map((game) => {
+  games = games.map((game, index) => {
     
     const date = new Date(game.date);
     const playerProfile = game.playerIdentity === "player1" ? game.player1 : game.player2;
@@ -408,6 +408,7 @@ const GameHistory = (props) => {
     return (
       <li className="list-group-item d-flex bg-light">
         <div className="gameHistory">
+          <span className="badge badge-primary badge-pill">#{index + 1}</span>
           <figure className="text-centered">
             <img src={playerProfile.profileData.imageFile} alt={playerProfile.profileData.name} />
             <figcaption>{playerProfile.username}</figcaption>

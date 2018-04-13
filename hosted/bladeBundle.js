@@ -1205,12 +1205,12 @@ var GameHistory = function GameHistory(props) {
   var games = props.games.sort(function (gameA, gameB) {
     var timeA = new Date(gameA.date).getTime();
     var timeB = new Date(gameB.date).getTime();
-    return timeA - timeB;
+    return timeB - timeA;
   });
 
   var wins = 0;
   var losses = 0;
-  games = games.map(function (game) {
+  games = games.map(function (game, index) {
 
     var date = new Date(game.date);
     var playerProfile = game.playerIdentity === "player1" ? game.player1 : game.player2;
@@ -1240,6 +1240,12 @@ var GameHistory = function GameHistory(props) {
       React.createElement(
         "div",
         { className: "gameHistory" },
+        React.createElement(
+          "span",
+          { className: "badge badge-primary badge-pill" },
+          "#",
+          index + 1
+        ),
         React.createElement(
           "figure",
           { className: "text-centered" },
