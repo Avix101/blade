@@ -3,6 +3,7 @@
 var profileSelection = void 0;
 var profilePics = void 0;
 
+//Process a request to login to a user's account
 var handleLogin = function handleLogin(e) {
   e.preventDefault();
 
@@ -16,6 +17,7 @@ var handleLogin = function handleLogin(e) {
   return false;
 };
 
+//Construct a login window / form that allows the user to enter their details
 var LoginWindow = function LoginWindow(props) {
   return React.createElement(
     "form",
@@ -77,10 +79,12 @@ var LoginWindow = function LoginWindow(props) {
   );
 };
 
+//Render the login window
 var createLoginWindow = function createLoginWindow(csrf) {
   ReactDOM.render(React.createElement(LoginWindow, { csrf: csrf }), document.querySelector("#main"));
 };
 
+//Handle a request from a user to sign up for a new account
 var handleSignup = function handleSignup(e) {
   e.preventDefault();
 
@@ -99,6 +103,7 @@ var handleSignup = function handleSignup(e) {
   return false;
 };
 
+//Construct a sign up window that allows users to select a username, password, and profile character
 var SignupWindow = function SignupWindow(props) {
   return React.createElement(
     "form",
@@ -192,12 +197,14 @@ var SignupWindow = function SignupWindow(props) {
   );
 };
 
+//If the user selects a different profile character, update the preview image to match
 var alterPreviewImage = function alterPreviewImage(e) {
   var select = document.querySelector("#profileImgSelect");
   var key = select.options[select.selectedIndex].value;
   document.querySelector("#profilePreview").src = profilePics[key].imageFile;
 };
 
+//Construct a profile character selection window
 var ProfileSelection = function ProfileSelection(props) {
 
   var profileKeys = Object.keys(props.profiles);
@@ -218,15 +225,17 @@ var ProfileSelection = function ProfileSelection(props) {
   );
 };
 
+//Render / populate the character selection window
 var populateProfileSelection = function populateProfileSelection(profiles) {
-  console.log(profiles);
   ReactDOM.render(React.createElement(ProfileSelection, { profiles: profiles }), profileSelection);
 };
 
+//Render the signup window
 var createSignupWindow = function createSignupWindow(csrf) {
   ReactDOM.render(React.createElement(SignupWindow, { csrf: csrf }), document.querySelector("#main"));
 };
 
+//Setup the login / signup page
 var setup = function setup(csrf) {
   var loginButton = document.querySelector("#loginButton");
   var signupButton = document.querySelector("#signupButton");
@@ -237,6 +246,7 @@ var setup = function setup(csrf) {
     return false;
   });
 
+  //If the user switches contexts, update the shown form
   signupButton.addEventListener("click", function (e) {
     e.preventDefault();
     createSignupWindow(csrf);
@@ -249,12 +259,14 @@ var setup = function setup(csrf) {
   createLoginWindow(csrf);
 };
 
+//Get a new csrf token from the server
 var getToken = function getToken() {
   sendAjax('GET', '/getToken', null, function (result) {
     setup(result.csrfToken);
   });
 };
 
+//Get all possible profile characters from the server
 var getProfiles = function getProfiles() {
   sendAjax('GET', '/getProfiles', null, function (data) {
     populateProfileSelection(data.profilePics);
@@ -262,21 +274,25 @@ var getProfiles = function getProfiles() {
   });
 };
 
+//When the page loads, get a token
 $(document).ready(function () {
   getToken();
 });
 "use strict";
 
+//Hide the success message
 var hideSuccess = function hideSuccess(e) {
   e.preventDefault();
   handleSuccess("", true);
 };
 
+//Hide the error message
 var hideError = function hideError(e) {
   e.preventDefault();
   handleError("", true);
 };
 
+//Construct a success message window
 var SuccessMessage = function SuccessMessage(props) {
 
   var className = "alert alert-dismissable alert-success";
@@ -298,6 +314,7 @@ var SuccessMessage = function SuccessMessage(props) {
   );
 };
 
+//Construct an error message window
 var ErrorMessage = function ErrorMessage(props) {
 
   var className = "alert alert-dismissible alert-danger";
@@ -322,6 +339,7 @@ var ErrorMessage = function ErrorMessage(props) {
 var successMessage = "";
 var successRepeatCount = 1;
 
+//Handle a successful action by displaying a message to the user
 var handleSuccess = function handleSuccess(message, hide) {
 
   if (!hide) {
@@ -346,6 +364,7 @@ var handleSuccess = function handleSuccess(message, hide) {
 var errorMessage = "";
 var errorRepeatCount = 1;
 
+//Handle an error message by displaying an error message to the user
 var handleError = function handleError(message, hide) {
 
   if (!hide) {
@@ -367,11 +386,12 @@ var handleError = function handleError(message, hide) {
   $('html, body').scrollTop(0);
 };
 
+//Redirect the user to a new page
 var redirect = function redirect(response) {
-  //$("#domoMessage").animate({ width: 'hide' }, 350);
   window.location = response.redirect;
 };
 
+//Send an Ajax request to the server to get or post info
 var sendAjax = function sendAjax(type, action, data, success) {
   $.ajax({
     cache: false,

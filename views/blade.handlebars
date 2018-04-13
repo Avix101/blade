@@ -28,6 +28,7 @@
 </head>
 <body>
 
+  <!-- Navigation containers and links -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <a href="/blade" class="navbar-left navbar-brand">
       <img id="logo" width="64px" height="64px" src="/assets/img/icon.jpg" alt="Site Logo" />
@@ -70,12 +71,11 @@
     </div>
   </nav>
   
+  <!-- Notification containers -->
   <div id="errorMessage"></div>
   <div id="successMessage"></div>
-
   
-  
-  
+  <!-- Containers for React generated content -->
   <div id="appContainer" class="container-fluid moveDown">
     <div class="row row-centered">
       <div class="col-lg-2 col-centered">
@@ -93,6 +93,7 @@
   <!-- Images needed for game -->
   <img id="bladeMat" class="hidden" src="/assets/img/blade_mat.png" alt="Blade Mat" />
   
+  <!-- Script used to store variables using Handlebars -->
   <script>
     const username = "{{username}}";
     const profileImage = "{{profileData.imageFile}}";

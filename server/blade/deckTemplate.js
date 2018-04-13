@@ -1,3 +1,5 @@
+// This module provides templates for cards that should be included in a game
+// Data includes name, image file, value, sort value, and number per game deck
 const cardDir = '/assets/img/cards/';
 const deckTemplate = {
   back: {

@@ -4,7 +4,10 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+//The animation class bundles a collection of properties to change over a set period of time
+//It also updates its state if given a timestamp
 var Animation = function () {
+  //Build the animation using the given data
   function Animation(logistics, holdReadyStatus) {
     _classCallCheck(this, Animation);
 
@@ -28,10 +31,16 @@ var Animation = function () {
 
   _createClass(Animation, [{
     key: "bind",
+
+
+    //Binding an animation sets it's starting time to the current time and begins the animation
     value: function bind(currentTime) {
       this.startTime = currentTime;
-      this.currentTime - currentTime;
+      this.currentTime = currentTime;
     }
+
+    //Animations use the current time to update its current status
+
   }, {
     key: "update",
     value: function update(currentTime) {
@@ -39,16 +48,20 @@ var Animation = function () {
       var timeSinceStart = currentTime - this.startTime;
       this.currentTime += timeElapsed;
 
+      //Don't update if the animation is finished
       if (timeSinceStart < this.begin) {
         return;
       }
 
+      //Calcualte the ratio between start and finish
       var ratio = (timeSinceStart - this.begin) / this.timeToFinish;
 
+      //The ratio should never be greater than 1
       if (ratio > 1) {
         ratio = 1;
       }
 
+      //Update all properties to reflect the current stage of the animation (using lerp)
       var propKeys = Object.keys(this.propsCurrent);
       for (var i = 0; i < propKeys.length; i++) {
         var key = propKeys[i];
@@ -56,15 +69,22 @@ var Animation = function () {
         this.propsCurrent[key] = lerp(this.propsBegin[key], this.propsEnd[key], ratio);
       }
 
+      //If the animation has reached its end, complete it
       if (ratio >= 1) {
         this.complete = true;
       }
     }
+
+    //Determine if the animation is ready
+
   }, {
     key: "ready",
     value: function ready() {
       return this.holdReadyStatus;
     }
+
+    //Copy the values calculated by the animation into a given object
+
   }, {
     key: "copyVals",
     value: function copyVals(obj) {
@@ -86,6 +106,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+//A card object holds location and animation related data
 var Card = function () {
   function Card(name, sortValue, location, size) {
     _classCallCheck(this, Card);
@@ -101,7 +122,6 @@ var Card = function () {
     this.animation = null;
     this.hueRotate = 0;
     this.originalLocation = location;
-    //this.queuedAnimations = [];
     this.animCallback = null;
     this.sealed = false;
     this.opacity = 1;
@@ -109,15 +129,20 @@ var Card = function () {
 
   _createClass(Card, [{
     key: "bindAnimation",
+
+
+    //Animations can be bound to a card, in which case the card will animate when updated
     value: function bindAnimation(animation, callback, seal) {
 
       if (seal) {
         this.sealed = seal;
       }
 
+      //Start the animation at the time of bind
       this.animation = animation;
       this.animation.bind(new Date().getTime());
 
+      //If the animation comes with a callback, set the callback
       if (callback) {
         this.animCallback = callback;
       } else {
@@ -128,39 +153,32 @@ var Card = function () {
     key: "isRevealed",
 
 
-    /*queueAnimation(animation, params, callback){
-      this.queuedAnimations.push({animation, callback});
-    };
-    
-    nextAnimation(){
-      if (this.queuedAnimations.length > 0){
-        const queued = this.queuedAnimations[0];
-        const animation = queued.animation.apply(this, queued.params);
-        this.bindAnimation(animation, queued.callback);
-        this.queuedAnimations.splice(0, 1);
-      }
-    };
-    
-    clearQueue(){
-      this.queuedAnimations = [];
-    };*/
-
+    //Determine if the card is revealed
     value: function isRevealed() {
       return this.revealed;
     }
   }, {
     key: "flip",
+
+
+    //Toggle whether or not the card is revealed
     value: function flip() {
       this.revealed = !this.revealed;
     }
   }, {
     key: "cancelAnimation",
+
+
+    //Cancel a card's animation
     value: function cancelAnimation() {
       delete this.animation;
       this.animation = null;
     }
   }, {
     key: "endAnimation",
+
+
+    //End the card's animation (same as cancel, but calls the animation callback)
     value: function endAnimation() {
       this.cancelAnimation();
       if (this.animCallback) {
@@ -169,23 +187,36 @@ var Card = function () {
     }
   }, {
     key: "readyToAnimate",
+
+
+    //Determine if the card is ready to animate
     value: function readyToAnimate() {
       return this.animation === null;
     }
   }, {
     key: "reveal",
+
+
+    //Reveal the card's true name
     value: function reveal(name) {
       this.name = name;
     }
   }, {
     key: "flipImage",
+
+
+    //Visually flip the card 180 degrees
     value: function flipImage() {
       this.radians = (this.radians + Math.PI) % (2 * Math.PI);
     }
+
+    //Update the card based on its current animation
+
   }, {
     key: "update",
     value: function update(currentTime) {
       if (this.animation) {
+        //Update the animation and copy over the new values
         this.animation.update(currentTime);
         this.animation.copyVals(this);
 
@@ -206,50 +237,62 @@ var Card = function () {
 
 var cardImageStruct = {};
 
+//Interpolate between two values given a ratio between 0 and 1
 var lerp = function lerp(val1, val2, ratio) {
   var component1 = (1 - ratio) * val1;
   var component2 = ratio * val2;
   return component1 + component2;
 };
 
+//Clear the given canvas
 var clearCanvas = function clearCanvas(canvas, ctx) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 };
 
+//Draw to the display canvas, which is dynamically resizable
 var displayFrame = function displayFrame() {
 
+  //If the display canvas doesn't exist, don't draw to it
   if (!viewport) {
     return;
   }
 
+  //Clear the display canvas, draw from the prep canvas
   clearCanvas(viewport, viewCtx);
   viewCtx.save();
   viewCtx.imageSmoothingEnabled = false;
   viewCtx.drawImage(prepCanvas, 0, 0, prepCanvas.width, prepCanvas.height, 0, 0, viewport.width, viewport.height);
+  viewCtx.restore();
 };
 
+//Draw a card to the prep canvas
 var drawCard = function drawCard(card) {
   var image = cardImageStruct[card.name];
 
+  //If the card isn't revealed, draw the back of a card
   if (!card.isRevealed()) {
     image = cardImageStruct["back"];
   }
 
   prepCtx.save();
 
+  //Adjust the card's color and opacity accordingly
   prepCtx.globalAlpha = card.opacity;
 
   if (card === selectedCard) {
     prepCtx.filter = "hue-rotate(" + card.hueRotate + "deg)";
   }
 
+  //Translate and rotate the card
   prepCtx.translate(card.x + card.width / 2, card.y + card.height / 2);
   prepCtx.rotate(card.radians);
 
+  //Draw the card to the prep canvas
   prepCtx.drawImage(image, -card.width / 2, -card.height / 2, card.width, card.height);
   prepCtx.restore();
 };
 
+//Draw the current scores to the prep canvas
 var drawScore = function drawScore(playerPoints, opponentPoints) {
   prepCtx.save();
   prepCtx.font = "96pt Fira Sans, sans-serif";
@@ -258,6 +301,7 @@ var drawScore = function drawScore(playerPoints, opponentPoints) {
   var opponentWidth = prepCtx.measureText(opponentPoints).width;
   var halfWidth = prepCanvas.width / 2 - 3;
 
+  //Make text gradients
   var opponentGradient = prepCtx.createLinearGradient(0, 355, 0, 427);
   var playerGradient = prepCtx.createLinearGradient(0, 700, 0, 772);
   playerGradient.addColorStop(0, "white");
@@ -268,6 +312,7 @@ var drawScore = function drawScore(playerPoints, opponentPoints) {
   prepCtx.textAlign = "center";
   prepCtx.textBaseline = "middle";
 
+  //Draw the two scores to the screen
   prepCtx.fillStyle = opponentGradient;
   prepCtx.fillText(opponentPoints, halfWidth, 355);
 
@@ -277,6 +322,7 @@ var drawScore = function drawScore(playerPoints, opponentPoints) {
   prepCtx.restore();
 };
 
+//Draw the instruction set to the prep canvas
 var drawTurnIndicator = function drawTurnIndicator() {
   var playerTurn = gameState.turnOwner === playerStatus;
 
@@ -287,6 +333,7 @@ var drawTurnIndicator = function drawTurnIndicator() {
   var x = 490;
   var y = 645;
 
+  //Depending on the gamestate, draw instructions to the screen for the player
   switch (gameState.turnType) {
     case "playCard":
       if (playerTurn) {
@@ -308,6 +355,7 @@ var drawTurnIndicator = function drawTurnIndicator() {
   prepCtx.restore();
 };
 
+//Draw the game's result to the prep canvas
 var drawGameResult = function drawGameResult() {
   prepCtx.save();
   prepCtx.globalAlpha = 0.7;
@@ -319,6 +367,7 @@ var drawGameResult = function drawGameResult() {
   prepCtx.textAlign = "center";
   prepCtx.textBaseline = "middle";
 
+  //Depending on the game's winner, draw the appropriate text to the screen
   if (playerStatus === gameState.winner) {
     prepCtx.fillStyle = "blue";
     prepCtx.fillText("You won!", prepCanvas.width / 2, prepCanvas.height / 2);
@@ -333,6 +382,7 @@ var drawGameResult = function drawGameResult() {
   prepCtx.restore();
 };
 
+//Draw a waiting overlay to the prep canvas
 var drawWaitingOverlay = function drawWaitingOverlay(text) {
   prepCtx.save();
   prepCtx.globalAlpha = 0.7;
@@ -350,6 +400,7 @@ var drawWaitingOverlay = function drawWaitingOverlay(text) {
   prepCtx.restore();
 };
 
+//Draw the player and opponent profiles to the prep canvas
 var drawPlayerProfiles = function drawPlayerProfiles() {
   var playerProfile = getPlayerProfile();
   var opponentProfile = getOpponentProfile();
@@ -361,6 +412,7 @@ var drawPlayerProfiles = function drawPlayerProfiles() {
   prepCtx.textBaseline = "middle";
   prepCtx.fillStyle = "white";
 
+  //Draw the profile and write their username below it
   if (playerProfile) {
     prepCtx.drawImage(playerProfile.charImage, 25, 750, 256, 256);
 
@@ -376,9 +428,11 @@ var drawPlayerProfiles = function drawPlayerProfiles() {
   prepCtx.restore();
 };
 
+//The main draw call that populates the prep canvas
 var draw = function draw() {
   clearCanvas(prepCanvas, prepCtx);
 
+  //Draw the blade mat in the background
   prepCtx.drawImage(bladeMat, 0, 0, prepCanvas.width, prepCanvas.height);
 
   if (!cardImageStruct["back"]) {
@@ -387,6 +441,7 @@ var draw = function draw() {
 
   var readyStatus = true;
 
+  //Update and draw all cards in the field
   var time = new Date().getTime();
   var fieldKeys = Object.keys(fields);
   for (var i = 0; i < fieldKeys.length; i++) {
@@ -401,6 +456,7 @@ var draw = function draw() {
     }
   }
 
+  //Update and draw all cards in the players' hands and decks
   var subDeckKeys = Object.keys(deck);
   for (var _i = 0; _i < subDeckKeys.length; _i++) {
     var subDeck = deck[subDeckKeys[_i]];
@@ -414,10 +470,13 @@ var draw = function draw() {
     }
   }
 
+  //Draw the players' profiles
   drawPlayerProfiles();
 
+  //Determine if the player is ready to receive an update
   updateReadyStatus(readyStatus);
 
+  //Draw instructions or a screen overlay depending on the gamestate
   if (!inRoom && gameState.turnType !== "end") {
     drawWaitingOverlay("Please create or join a game...");
   } else {
@@ -434,10 +493,12 @@ var draw = function draw() {
     }
   }
 
+  //Move the prep canvas to the display canvas
   displayFrame();
 };
 'use strict';
 
+//Declare all necessary variables
 var viewport = void 0,
     viewCtx = void 0,
     prepCanvas = void 0,
@@ -445,20 +506,14 @@ var viewport = void 0,
 var socket = void 0,
     hash = void 0;
 var bladeMat = void 0;
-var cardsLoaded = 0;
 var animationFrame = void 0;
 var deck = {};
 var NULL_FUNC = function NULL_FUNC() {};
 var readyToPlay = false;
 var selectedCard = null;
 var mousePos = { x: 0, y: 0 };
-var bladeLink = void 0,
-    instructionsLink = void 0,
-    aboutLink = void 0,
-    feedbackLink = void 0,
-    disclaimerLink = void 0,
-    profileLink = void 0;
 
+//Variables relating to gamestate
 var playerStatus = void 0;
 var playerProfiles = {};
 var blastSelect = false;
@@ -479,6 +534,7 @@ var fields = {
   'player2': []
 };
 
+//Current page view
 var pageView = void 0;
 
 var aspectRatio = 16 / 9;
@@ -494,6 +550,7 @@ var calcDisplayDimensions = function calcDisplayDimensions() {
   };
 };
 
+//Resize the display canvas if its currently onscreen
 var resizeGame = function resizeGame(e) {
   if (pageView === "#blade") {
     var dimensions = calcDisplayDimensions();
@@ -501,12 +558,16 @@ var resizeGame = function resizeGame(e) {
   }
 };
 
+//Load the requested view
 var loadView = function loadView() {
+  //Find the page's hash
   var hash = window.location.hash;
   pageView = hash;
 
+  //Always render the right panel (regardless of view)
   renderRightPanel();
 
+  //Depending on the hash, render the main content
   switch (hash) {
     case "#blade":
       {
@@ -544,8 +605,10 @@ var loadView = function loadView() {
   }
 };
 
+//Run this function when the page loads
 var init = function init() {
 
+  //Load the requested view
   loadView();
 
   //Grab static images included in client download
@@ -574,11 +637,8 @@ var init = function init() {
   socket.on('gamestate', updateGamestate);
   socket.on('gamedata', notifyGameData);
 
-  //Eventually switch to server call to load cards
-  //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
-
+  //Start the update loop!
   animationFrame = requestAnimationFrame(update);
-
   addToChat("You have joined the lobby");
 };
 
@@ -595,6 +655,7 @@ var GameWindow = function GameWindow(props) {
   return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
 };
 
+//Construct the right panel which holds a Youtube iframe and a chat box
 var MusicAndChatWindow = function MusicAndChatWindow(props) {
   return React.createElement(
     "div",
@@ -632,10 +693,12 @@ var MusicAndChatWindow = function MusicAndChatWindow(props) {
   );
 };
 
+//Render the right panel
 var renderRightPanel = function renderRightPanel() {
   ReactDOM.render(React.createElement(MusicAndChatWindow, null), document.querySelector("#rightPanel"));
 };
 
+//Render the main game
 var renderGame = function renderGame(width, height) {
   ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
 
@@ -649,24 +712,29 @@ var renderGame = function renderGame(width, height) {
   renderRightPanel();
 };
 
+//Disables the auto-submit functionality of a form
 var disableDefaultForm = function disableDefaultForm(e) {
   e.preventDefault();
   return false;
 };
 
+//Handle a request to change a password
 var handlePasswordChange = function handlePasswordChange(e) {
   e.preventDefault();
 
+  //Password fields cannot be empty
   if ($("#newPassword").val() == '' || $("#newPassword2").val() == '' || $("#password").val() == '') {
     handleError("All fields are required to change password.");
     return false;
   }
 
+  //New password and password confirmation should match
   if ($("#newPassword").val() !== $("#newPassword2").val()) {
     handleError("New password and password confirmation must match");
     return false;
   }
 
+  //Send the data to the server via Ajax
   sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), function () {
     handleSuccess("Password successfully changed!");
     $("#newPassword").val("");
@@ -677,6 +745,7 @@ var handlePasswordChange = function handlePasswordChange(e) {
   return false;
 };
 
+//Handle a request to submit feedback
 var handleFeedback = function handleFeedback(e) {
   e.preventDefault();
 
@@ -693,6 +762,7 @@ var handleFeedback = function handleFeedback(e) {
   return false;
 };
 
+//Construct a window to create / join a room for playing Blade
 var RoomWindow = function RoomWindow(props) {
 
   if (props.renderEmpty) {
@@ -701,6 +771,7 @@ var RoomWindow = function RoomWindow(props) {
 
   var roomOptions = void 0;
 
+  //Construct a list of available rooms if there are any
   var bgColor = "bg-secondary";
   if (props.rooms.length > 0) {
     roomOptions = props.rooms.map(function (room) {
@@ -724,6 +795,7 @@ var RoomWindow = function RoomWindow(props) {
     )];
   }
 
+  //Return the created and formatted form
   return React.createElement(
     "div",
     { id: "roomSelect" },
@@ -792,6 +864,7 @@ var RoomWindow = function RoomWindow(props) {
   );
 };
 
+//Construct an instructions panel for the main section of the site
 var InstructionsWindow = function InstructionsWindow(props) {
   return React.createElement(
     "div",
@@ -927,6 +1000,7 @@ var InstructionsWindow = function InstructionsWindow(props) {
   );
 };
 
+//Construct an about window that holds info pertaining to Trails of Cold Steel I and II
 var AboutWindow = function AboutWindow(props) {
   return React.createElement(
     "div",
@@ -1008,6 +1082,7 @@ var AboutWindow = function AboutWindow(props) {
   );
 };
 
+//Construct a panel / form for submitting user feedback about the site
 var FeedbackWindow = function FeedbackWindow(props) {
   return React.createElement(
     "div",
@@ -1078,6 +1153,7 @@ var FeedbackWindow = function FeedbackWindow(props) {
   );
 };
 
+//Construct a profile panel that holds user info, a password change screen, and game history data
 var ProfileWindow = function ProfileWindow(props) {
   return React.createElement(
     "div",
@@ -1198,16 +1274,17 @@ var ProfileWindow = function ProfileWindow(props) {
   );
 };
 
+//Construct a game history panel the lists a user's previous matches
 var GameHistory = function GameHistory(props) {
 
-  console.log(props.games);
-
+  //Sort the games by most recently played to least recently
   var games = props.games.sort(function (gameA, gameB) {
     var timeA = new Date(gameA.date).getTime();
     var timeB = new Date(gameB.date).getTime();
     return timeB - timeA;
   });
 
+  //Create a panel that holds all relevant data pertaining to game result
   var wins = 0;
   var losses = 0;
   games = games.map(function (game, index) {
@@ -1308,6 +1385,7 @@ var GameHistory = function GameHistory(props) {
   var winGameBarWidth = { width: wins / games.length * 100 + "%" };
   var lossGameBarWidth = { width: losses / games.length * 100 + "%" };
 
+  //Build the entire game history panel, with all game results included
   return React.createElement(
     "div",
     null,
@@ -1393,19 +1471,23 @@ var GameHistory = function GameHistory(props) {
   );
 };
 
+//Render the left panel as empty
 var clearLeftPane = function clearLeftPane() {
   ReactDOM.render(React.createElement("div", null), document.querySelector("#room"));
 };
 
+//Make a call to render the game history section
 var renderGameHistory = function renderGameHistory(games) {
   ReactDOM.render(React.createElement(GameHistory, { games: games }), document.querySelector("#gameHistory"));
 };
 
+//Make a call to render the profile panel
 var renderProfile = function renderProfile() {
   getTokenWithCallback(function (csrfToken) {
     ReactDOM.render(React.createElement(ProfileWindow, { csrf: csrfToken }), document.querySelector("#main"));
   });
 
+  //Request game history data
   sendAjax('GET', '/getGameHistory', null, function (data) {
     renderGameHistory(data.data);
   });
@@ -1413,6 +1495,7 @@ var renderProfile = function renderProfile() {
   clearLeftPane();
 };
 
+//Make a call to render the feedback panel
 var renderFeedback = function renderFeedback() {
   getTokenWithCallback(function (csrfToken) {
     ReactDOM.render(React.createElement(FeedbackWindow, { csrf: csrfToken }), document.querySelector("#main"));
@@ -1421,17 +1504,20 @@ var renderFeedback = function renderFeedback() {
   clearLeftPane();
 };
 
+//Make a call to render the about ToCS I and II panel
 var renderAbout = function renderAbout() {
   ReactDOM.render(React.createElement(AboutWindow, null), document.querySelector("#main"));
   clearLeftPane();
 };
 
+//Make a call to render the instructions panel
 var renderInstructions = function renderInstructions() {
   ReactDOM.render(React.createElement(InstructionsWindow, null), document.querySelector("#main"));
 
   clearLeftPane();
 };
 
+//Request a newe csrf token and then execute a callback when one is retrieved
 var getTokenWithCallback = function getTokenWithCallback(callback) {
   sendAjax('GET', '/getToken', null, function (result) {
     if (callback) {
@@ -1440,24 +1526,31 @@ var getTokenWithCallback = function getTokenWithCallback(callback) {
   });
 };
 
+//Render the room selection panel (left side)
 var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
   ReactDOM.render(React.createElement(RoomWindow, { rooms: rooms, renderEmpty: renderEmpty }), document.querySelector("#room"));
 };
 "use strict";
 
+//The main update call which runs ideally 60 times a second
 var update = function update() {
 
+  //Check for card collisions with the mouse depending on the current state
   if (blastSelect) {
     checkCardCollisions(getOpponentHand(), false);
   } else {
     checkCardCollisions(getPlayerHand(), true);
   }
+  //Draw to the canvas
   draw();
 
+  //Request another update
   animationFrame = requestAnimationFrame(update);
 };
 
+//Process a mouse click
 var processClick = function processClick(e) {
+  //Depending on the gamestate, unselect a card, and update the ready status
   if (selectedCard && !gameState.winner && !gameState.waiting) {
     switch (gameState.turnType) {
       case "pickFromDeck":
@@ -1499,6 +1592,7 @@ var processClick = function processClick(e) {
   };
 };
 
+//Update the mouse position if it leaves the canvas
 var processMouseLeave = function processMouseLeave(e) {
   mousePos = {
     x: -200,
@@ -1506,6 +1600,7 @@ var processMouseLeave = function processMouseLeave(e) {
   };
 };
 
+//Get the mouse position relative to the position of the canvas
 var getMouse = function getMouse(e) {
   var rect = viewport.getBoundingClientRect();
   var widthRatio = rect.width / prepCanvas.width;
@@ -1516,6 +1611,7 @@ var getMouse = function getMouse(e) {
   };
 };
 
+//Determine if a given point is inside a given rectangle
 var pointInRect = function pointInRect(rect, point) {
   if (point.x > rect.x && point.x < rect.x + rect.width) {
     if (point.y > rect.y && point.y < rect.y + rect.height) {
@@ -1526,6 +1622,8 @@ var pointInRect = function pointInRect(rect, point) {
   return false;
 };
 
+//Rotate a point around an anchor a number of radians
+//Used to calculate collisions with rotated cards
 var rotatePoint = function rotatePoint(point, anchor, radians) {
   var translatedPoint = { x: point.x - anchor.x, y: point.y - anchor.y };
 
@@ -1538,11 +1636,13 @@ var rotatePoint = function rotatePoint(point, anchor, radians) {
   return { x: newX + anchor.x, y: newY + anchor.y };
 };
 
+//Check to see if the mouse is colliding with any cards
 var checkCardCollisions = function checkCardCollisions(cardCollection, selectPlayer) {
   if (!readyToPlay || gameState.winner !== null || gameState.waiting) {
     return;
   }
 
+  //Allow the player to pick from their deck
   if (gameState.turnType === "pickFromDeck") {
     var topCard = getTopDeckCard();
     if (topCard) {
@@ -1552,6 +1652,7 @@ var checkCardCollisions = function checkCardCollisions(cardCollection, selectPla
     }
   }
 
+  //Check the player (or opponents) hand
   var newSelection = null;
   for (var i = 0; i < cardCollection.length; i++) {
     var card = cardCollection[i];
@@ -1564,6 +1665,7 @@ var checkCardCollisions = function checkCardCollisions(cardCollection, selectPla
     }
   }
 
+  //Select / unselect cards depending on the collision status
   if (newSelection && newSelection !== selectedCard) {
 
     if (selectedCard) {
@@ -1578,6 +1680,7 @@ var checkCardCollisions = function checkCardCollisions(cardCollection, selectPla
   }
 };
 
+//Animate the whole deck when all of the cards are ready to be animated
 var animateDeckWhenReady = function animateDeckWhenReady(cardCollection, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
     var card = cardCollection[i];
@@ -1591,6 +1694,7 @@ var animateDeckWhenReady = function animateDeckWhenReady(cardCollection, callbac
   }
 };
 
+//Chain animations together so each executes after the last one
 var chainAnimations = function chainAnimations(animationPackages, finalCallback) {
   animationPackages.reverse();
   var animList = animationPackages.map(function (pack) {
@@ -1600,6 +1704,8 @@ var chainAnimations = function chainAnimations(animationPackages, finalCallback)
     return pack[1];
   });
   var callbacks = [finalCallback];
+
+  //Build a chain of functions to get called by earlier functions
 
   var _loop = function _loop(i) {
     var newCallback = function newCallback() {
@@ -1615,6 +1721,7 @@ var chainAnimations = function chainAnimations(animationPackages, finalCallback)
   callbacks[animationPackages.length]();
 };
 
+//Load all of the blade card images for later drawing usage
 var loadBladeCards = function loadBladeCards(cardImages) {
   var _loop2 = function _loop2(i) {
     var cardImage = cardImages[i];
@@ -1622,12 +1729,6 @@ var loadBladeCards = function loadBladeCards(cardImages) {
 
     image.onload = function () {
       cardImageStruct[cardImage.name] = image;
-
-      cardsLoaded++;
-
-      if (cardsLoaded >= cardImages.length) {
-        //socket.emit('requestDeck');
-      }
     };
 
     image.src = cardImage.src;
@@ -1638,6 +1739,7 @@ var loadBladeCards = function loadBladeCards(cardImages) {
   }
 };
 
+//Notify the player if the game result was stored on the server
 var notifyGameData = function notifyGameData(data) {
   if (data.saved) {
     handleSuccess("Game result successfully stored on server! (Check profile page)");
@@ -1646,6 +1748,7 @@ var notifyGameData = function notifyGameData(data) {
   }
 };
 
+//Process room options sent from the server
 var roomOptions = function roomOptions(data) {
   if (!inRoom) {
 
@@ -1659,20 +1762,24 @@ var roomOptions = function roomOptions(data) {
   }
 };
 
+//When a room is selected from the existing rooms list, paste the code into the room join bar
 var onRoomSelect = function onRoomSelect(e) {
   var roomId = document.querySelector("#roomName");
   roomId.value = e.target.getAttribute('data-room');
 };
 
+//Request to create a new room
 var createRoom = function createRoom(e) {
   socket.emit('createRoom');
 };
 
+//Request to join an existing room
 var joinRoom = function joinRoom(e) {
   var roomId = document.querySelector("#roomName").value;
   socket.emit('joinRoom', { room: roomId });
 };
 
+//When a room is joined, prepare for a new game
 var roomJoined = function roomJoined(data) {
   playerStatus = data.status;
   inRoom = true;
@@ -1701,6 +1808,7 @@ var roomJoined = function roomJoined(data) {
   renderRoomSelection([], true);
 };
 
+//When player profile data is received request follow-up information and build the player profiles
 var loadPlayerProfiles = function loadPlayerProfiles(data) {
 
   if (data.player1) {
@@ -1732,6 +1840,7 @@ var loadPlayerProfiles = function loadPlayerProfiles(data) {
   }
 };
 
+//Process a response from the server holding deck information
 var setDeck = function setDeck(data) {
 
   var subDeckKeys = Object.keys(data);
@@ -1742,6 +1851,7 @@ var setDeck = function setDeck(data) {
       var cardData = data[key][j];
       var card = void 0;
 
+      //Construct new cards
       if (cardData) {
         var _image = cardImageStruct[cardData.ref];
         card = new Card(cardData.ref, cardData.sortValue, { x: -200, y: -200 }, { width: _image.width, height: _image.height });
@@ -1754,6 +1864,7 @@ var setDeck = function setDeck(data) {
     }
   }
 
+  //Start building both decks
   if (playerStatus === 'player1') {
     initPlayerDeck(deck.player1, deck.p1Deck);
     initOpponentDeck(deck.player2, deck.p2Deck);
@@ -1761,36 +1872,9 @@ var setDeck = function setDeck(data) {
     initPlayerDeck(deck.player2, deck.p2Deck);
     initOpponentDeck(deck.player1, deck.p1Deck);
   }
-  //initPlayerDeck(playerStatus === 'player1' ? deck.);
-
-  //moveToPlayerDeck(deck.player1);
-  //NOTE: Replace with more consistent value!
-  //const width = deck.player1[0].width;
-
-  /*chainAnimations(deck.player1, [
-    [moveToPlayerDeck, [], true],
-    [flushCards, [770, true], true],
-    [startCardFlip, [], true],
-    [endCardFlip, [width], false]
-  ]);*/
-  //console.log(deck.player1.concat(deck.p1Deck));
-  /*moveToPlayerDeck(deck.player1.concat(deck.p1Deck), () => {
-    flushCards(deck.player1, 770, true, true, () => {
-      startCardFlip(deck.player1, false, () => {
-        foldInCards(deck.player1, () => {
-          startCardFlip(deck.player1, true, () => {
-            startCardFlip(deck.player1, false, () => {
-              flushCards(deck.player1, 770, true, false);
-            });
-          });
-        });
-      });
-    });
-  });*/
-
-  //flushCards(deck.player1, 770, true);
 };
 
+//Gets the player's profile
 var getPlayerProfile = function getPlayerProfile() {
   if (playerStatus === 'player1') {
     return playerProfiles['player1'];
@@ -1799,6 +1883,7 @@ var getPlayerProfile = function getPlayerProfile() {
   }
 };
 
+//Gets the opponent's profile
 var getOpponentProfile = function getOpponentProfile() {
   if (playerStatus === 'player1') {
     return playerProfiles['player2'];
@@ -1807,6 +1892,7 @@ var getOpponentProfile = function getOpponentProfile() {
   }
 };
 
+//Gets the top card from the player's deck
 var getTopDeckCard = function getTopDeckCard() {
   if (playerStatus === 'player1') {
     return deck.p1Deck[deck.p1Deck.length - 1];
@@ -1815,6 +1901,7 @@ var getTopDeckCard = function getTopDeckCard() {
   }
 };
 
+//Gets the players deck
 var getPlayerDeck = function getPlayerDeck() {
   if (playerStatus === 'player1') {
     return deck.p1Deck;
@@ -1823,6 +1910,7 @@ var getPlayerDeck = function getPlayerDeck() {
   }
 };
 
+//Gets the opponent's deck
 var getOpponentDeck = function getOpponentDeck() {
   if (playerStatus === 'player1') {
     return deck.p2Deck;
@@ -1831,6 +1919,7 @@ var getOpponentDeck = function getOpponentDeck() {
   }
 };
 
+//Gets the players field (cards on the field)
 var getPlayerField = function getPlayerField() {
   if (playerStatus === 'player1') {
     return fields['player1'];
@@ -1839,6 +1928,7 @@ var getPlayerField = function getPlayerField() {
   }
 };
 
+//Gets the opponent's field (cards on the field)
 var getOpponentField = function getOpponentField() {
   if (playerStatus === 'player1') {
     return fields['player2'];
@@ -1847,6 +1937,7 @@ var getOpponentField = function getOpponentField() {
   }
 };
 
+//Gets the player's hand
 var getPlayerHand = function getPlayerHand() {
   if (playerStatus === 'player1') {
     return deck.player1;
@@ -1855,6 +1946,7 @@ var getPlayerHand = function getPlayerHand() {
   }
 };
 
+//Gets the opponent's hand
 var getOpponentHand = function getOpponentHand() {
   if (playerStatus === 'player1') {
     return deck.player2;
@@ -1863,6 +1955,7 @@ var getOpponentHand = function getOpponentHand() {
   }
 };
 
+//Gets the player's points
 var getPlayerPoints = function getPlayerPoints() {
   if (playerStatus === 'player1') {
     return gameState.player1Points;
@@ -1871,6 +1964,7 @@ var getPlayerPoints = function getPlayerPoints() {
   }
 };
 
+//Gets the opponent's points
 var getOpponentPoints = function getOpponentPoints() {
   if (playerStatus === 'player1') {
     return gameState.player2Points;
@@ -1879,12 +1973,14 @@ var getOpponentPoints = function getOpponentPoints() {
   }
 };
 
+//Animate the player's deck
 var initPlayerDeck = function initPlayerDeck(playerHand, playerDeck) {
   chainAnimations([[moveTo, [playerHand.concat(playerDeck), -200, 800, 0, false]], [moveTo, [playerHand.concat(playerDeck), 300, 800, 400, true]], [flushCards, [playerHand, 770, true, true, true]], [startCardFlip, [playerHand, false]], [foldInCards, [playerHand, 1100, 770]], [startCardFlip, [playerHand, true]]], function () {
     socket.emit('sortDeck');
   });
 };
 
+//Animate the opponent's deck
 var initOpponentDeck = function initOpponentDeck(opponentHand, opponentDeck) {
   chainAnimations([[moveTo, [opponentHand.concat(opponentDeck), -200, 40, 0, false]], [moveTo, [opponentHand.concat(opponentDeck), 300, 40, 400, true]], [flushCards, [opponentHand, 70, false, true, true]], [foldInCards, [opponentHand, 1100, 70]], [flushCards, [opponentHand, 70, false, false, true]]], function () {
     for (var i = 0; i < opponentHand.length; i++) {
@@ -1894,6 +1990,7 @@ var initOpponentDeck = function initOpponentDeck(opponentHand, opponentDeck) {
   });
 };
 
+//Update the player's ready status (for updates)
 var confirmReady = 0;
 var updateReadyStatus = function updateReadyStatus(status) {
   if (readyToPlay === status || Object.keys(deck).length <= 0) {
@@ -1913,6 +2010,7 @@ var updateReadyStatus = function updateReadyStatus(status) {
   }
 };
 
+//Sort the player's deck and animate it
 var sortDeck = function sortDeck(data) {
   var playerHand = getPlayerHand();
 
@@ -1928,10 +2026,12 @@ var sortDeck = function sortDeck(data) {
   });
 };
 
+//process a call from the server to pick the top card from the deck
 var pickFromDeck = function pickFromDeck(data) {
   var player = data.player;
   gameState.waiting = false;
 
+  //Animate differently depending on if the card is the player's or the opponent's
   if (playerStatus === player) {
     var playerDeck = getPlayerDeck();
     var index = playerDeck.length - 1;
@@ -1969,6 +2069,7 @@ var pickFromDeck = function pickFromDeck(data) {
   }
 };
 
+//Remove a card from the player's hand and flush the remaining cards in their hand
 var splicePlayerCard = function splicePlayerCard(cardSet, index) {
   cardSet.splice(index, 1);
   cardSet.reverse();
@@ -1995,6 +2096,7 @@ var splicePlayerCard = function splicePlayerCard(cardSet, index) {
   });
 };
 
+//Remove a card from the opponent's hand and flush the cards remaining in their hand
 var spliceOpponentCard = function spliceOpponentCard(cardSet, index) {
   cardSet.splice(index, 1);
   cardSet.reverse();
@@ -2007,10 +2109,12 @@ var spliceOpponentCard = function spliceOpponentCard(cardSet, index) {
   });
 };
 
+//The server has accepted the requested turn action
 var turnAccepted = function turnAccepted() {
   gameState.waiting = true;
 };
 
+//Handle a request from the server to play a card
 var playCard = function playCard(data) {
   var cardSet = deck[data.cardSet];
   var card = cardSet[data.index];
@@ -2022,9 +2126,10 @@ var playCard = function playCard(data) {
     selectedCard = null;
   }
 
-  //moveTo([card], 1000, 500, 500, false);
+  //Animate the card differently depending on who played it and what the card is
   if (deck[data.cardSet] === getPlayerHand()) {
     switch (card.name) {
+      //Special cards are animated differently and have different effects on the game
       case "bolt":
         selectCard(card, true, true, function () {
           fadeCard(card, function () {
@@ -2172,6 +2277,7 @@ var playCard = function playCard(data) {
   }
 };
 
+//End the current game and reset the gamestate
 var endGame = function endGame() {
   readyToPlay = false;
   selectedCard = null;
@@ -2183,6 +2289,7 @@ var endGame = function endGame() {
   roomOptions({ rooms: [] });
 };
 
+//Process a server update regarding the gamestate
 var updateGamestate = function updateGamestate(data) {
 
   if (!data) {
@@ -2193,11 +2300,13 @@ var updateGamestate = function updateGamestate(data) {
 
   gameState.waiting = false;
 
+  //Update the sent keys
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
     gameState[key] = data[key];
   }
 
+  //Process a request to clear the field / end the game
   if (gameState.clearFields === true) {
     clearFields();
   }
@@ -2209,6 +2318,7 @@ var updateGamestate = function updateGamestate(data) {
   updateReadyStatus(false);
 };
 
+//Process a request to clear the player / opponent fields (move the cards offscreen)
 var clearFields = function clearFields() {
   var playerField = getPlayerField();
   var opponentField = getOpponentField();
@@ -2247,6 +2357,7 @@ var clearFields = function clearFields() {
   }
 };
 
+//Construct an animation to select a card
 var selectCard = function selectCard(card, playerSelect, sealBond, callback) {
   var yMod = Math.cos(card.radians) * 60;
   var xMod = Math.sin(card.radians) * 60;
@@ -2268,6 +2379,7 @@ var selectCard = function selectCard(card, playerSelect, sealBond, callback) {
   card.bindAnimation(moveAnim, callback, sealBond ? true : false);
 };
 
+//Construct an animation to unselect a card
 var unselectCard = function unselectCard(card, callback) {
 
   var moveAnim = new Animation({
@@ -2284,6 +2396,7 @@ var unselectCard = function unselectCard(card, callback) {
   card.bindAnimation(moveAnim, callback);
 };
 
+//Construct an animation to move a card somewhere
 var moveTo = function moveTo(cardCollection, x, y, time, offset, callback) {
   var _loop3 = function _loop3(i) {
     var card = cardCollection[i];
@@ -2296,25 +2409,20 @@ var moveTo = function moveTo(cardCollection, x, y, time, offset, callback) {
     card.bindAnimation(moveAnim, function () {
       card.originalLocation = { x: card.x, y: card.y };
       animateDeckWhenReady(cardCollection, function () {
-        //cardCollection.reverse();
+
         if (callback) {
           callback();
         }
       });
-      //animateDeckWhenReady(cardCollection, () => {
-      //flushCards(cardCollection, 770, true);
-      //});
     });
-    //anims.push(moveAnim);
   };
 
-  //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
     _loop3(i);
   }
-  //return anims;
 };
 
+//Construct an animation to start flipping a card over
 var startCardFlip = function startCardFlip(cardCollection, reverse, callback) {
   var _loop4 = function _loop4(i) {
     var card = cardCollection[i];
@@ -2332,22 +2440,16 @@ var startCardFlip = function startCardFlip(cardCollection, reverse, callback) {
       card.flip();
       endCardFlip(card, cardCollection, width, xDiff, yDiff, callback);
     });
-
-    //anims.push(flipAnimation);
   };
 
-  //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
     _loop4(i);
   }
-
-  //return anims;
 };
 
+//Construct an animation to finish flipping a card over
 var endCardFlip = function endCardFlip(card, cardCollection, width, xDiff, yDiff, callback) {
-  //const anims = [];
-  //for(let i = 0; i < cardCollection.length; i++){
-  //const card = cardCollection[i];
+
   var flipAnimation = new Animation({
     begin: 0,
     timeToFinish: 200,
@@ -2357,13 +2459,10 @@ var endCardFlip = function endCardFlip(card, cardCollection, width, xDiff, yDiff
   card.bindAnimation(flipAnimation, function () {
     animateDeckWhenReady(cardCollection, callback);
   });
-  //anims.push(flipAnimation);
-  //}
-  //return anims;
 };
 
+//Construct an animation to flush a set of cards to look like they belong to a hand
 var flushCards = function flushCards(cardCollection, baseLineY, curveDown, sequentially, reverse, callback) {
-  //const anims = [];
   for (var i = 0; i < cardCollection.length; i++) {
     var _card4 = cardCollection[i];
     var x = 1100 + 100 * (cardCollection.length / 2 - 1 - i);
@@ -2379,10 +2478,12 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
       }
     }
 
+    //Animate differently depending on player status
     var y = curveDown ? baseLineY + Math.max(Math.pow(Math.abs(distanceFromMiddle * 6), 1.3), 6) : baseLineY - Math.max(Math.pow(Math.abs(distanceFromMiddle * 6), 1.3), 6);
 
     var radians = curveDown ? distanceFromMiddle * 0.05 : distanceFromMiddle * -0.05;
 
+    //Reset the card location
     _card4.originalLocation.x = x;
     _card4.originalLocation.y = y;
 
@@ -2393,21 +2494,17 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
       propsEnd: { x: x, y: y, radians: radians }
     }, true);
 
-    //anims.push(flushAnim);
     _card4.bindAnimation(flushAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
-      //animateDeckWhenReady(cardCollection, () => {
-      //startCardFlip(cardCollection);
-      //});
     });
   }
 
   if (reverse) {
     cardCollection.reverse();
   }
-  //return anims;
 };
 
+//Construct an animation to stack cards on the field
 var stackCards = function stackCards(cardCollection, expandRight, time, callback) {
 
   var baseX = expandRight ? 1080 : 670;
@@ -2430,6 +2527,7 @@ var stackCards = function stackCards(cardCollection, expandRight, time, callback
   }
 };
 
+//Construct an animation fold cards into one pile
 var foldInCards = function foldInCards(cardCollection, x, y, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
     var _card6 = cardCollection[i];
@@ -2447,6 +2545,7 @@ var foldInCards = function foldInCards(cardCollection, x, y, callback) {
   }
 };
 
+//Construct an animation to fade out cards
 var fadeCard = function fadeCard(card, callback) {
   var fadeAnim = new Animation({
     begin: 0,
@@ -2458,6 +2557,7 @@ var fadeCard = function fadeCard(card, callback) {
   card.bindAnimation(fadeAnim, callback);
 };
 
+//Send a chat message to other players in the room
 var sendChatMessage = function sendChatMessage(e) {
   var chatBox = document.querySelector("#chatBox");
   var message = chatBox.value;
@@ -2465,27 +2565,32 @@ var sendChatMessage = function sendChatMessage(e) {
   socket.emit('chatMessage', { message: message });
 };
 
+//Display chat messages received from other players
 var receivedChatMessage = function receivedChatMessage(data) {
   var message = data.message;
   addToChat(message);
 };
 
+//Add a message to the chat window
 var addToChat = function addToChat(text) {
   var chatWindow = document.querySelector("#chat");
   chatWindow.value = chatWindow.value + "\n" + text;
 };
 "use strict";
 
+//Hide the success message
 var hideSuccess = function hideSuccess(e) {
   e.preventDefault();
   handleSuccess("", true);
 };
 
+//Hide the error message
 var hideError = function hideError(e) {
   e.preventDefault();
   handleError("", true);
 };
 
+//Construct a success message window
 var SuccessMessage = function SuccessMessage(props) {
 
   var className = "alert alert-dismissable alert-success";
@@ -2507,6 +2612,7 @@ var SuccessMessage = function SuccessMessage(props) {
   );
 };
 
+//Construct an error message window
 var ErrorMessage = function ErrorMessage(props) {
 
   var className = "alert alert-dismissible alert-danger";
@@ -2531,6 +2637,7 @@ var ErrorMessage = function ErrorMessage(props) {
 var successMessage = "";
 var successRepeatCount = 1;
 
+//Handle a successful action by displaying a message to the user
 var handleSuccess = function handleSuccess(message, hide) {
 
   if (!hide) {
@@ -2555,6 +2662,7 @@ var handleSuccess = function handleSuccess(message, hide) {
 var errorMessage = "";
 var errorRepeatCount = 1;
 
+//Handle an error message by displaying an error message to the user
 var handleError = function handleError(message, hide) {
 
   if (!hide) {
@@ -2576,11 +2684,12 @@ var handleError = function handleError(message, hide) {
   $('html, body').scrollTop(0);
 };
 
+//Redirect the user to a new page
 var redirect = function redirect(response) {
-  //$("#domoMessage").animate({ width: 'hide' }, 350);
   window.location = response.redirect;
 };
 
+//Send an Ajax request to the server to get or post info
 var sendAjax = function sendAjax(type, action, data, success) {
   $.ajax({
     cache: false,

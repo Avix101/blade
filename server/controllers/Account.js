@@ -3,15 +3,18 @@ const profilePics = require('./profiles.js');
 
 const { Account } = models;
 
+// Render the login page and send a csrf token
 const loginPage = (req, res) => {
   res.render('login', { csrfToken: req.csrfToken() });
 };
 
+// Log a user out
 const logout = (req, res) => {
   req.session.destroy();
   res.redirect('/');
 };
 
+// Log a user in
 const login = (request, response) => {
   const req = request;
   const res = response;
@@ -19,10 +22,12 @@ const login = (request, response) => {
   const username = `${req.body.username}`;
   const password = `${req.body.pass}`;
 
+  // Verify input
   if (!username || !password) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
+  // Authenticate the user
   return Account.AccountModel.authenticate(username, password, (err, account) => {
     if (err || !account) {
       return res.status(401).json({ error: 'Wrong username or password' });
@@ -34,6 +39,7 @@ const login = (request, response) => {
   });
 };
 
+// Sign a user up
 const signup = (request, response) => {
   const req = request;
   const res = response;
@@ -68,6 +74,7 @@ const signup = (request, response) => {
 
     const savePromise = newAccount.save();
 
+    // Save to the database, process a response or handle an error
     savePromise.then(() => {
       req.session.account = Account.AccountModel.toAPI(newAccount);
       res.json({ redirect: '/blade' });
@@ -83,6 +90,7 @@ const signup = (request, response) => {
   });
 };
 
+// Update a user's password
 const updatePassword = (request, response) => {
   const req = request;
   const res = response;
@@ -96,11 +104,13 @@ const updatePassword = (request, response) => {
     return res.status(400).json({ error: 'Password and confirmation password must match' });
   }
 
+  // Check their old password
   return Account.AccountModel.authenticate(username, req.body.password, (err, account) => {
     if (err || !account) {
       return res.status(401).json({ error: 'Wrong current password' });
     }
 
+    // Generate the hash and salt for the new password
     return Account.AccountModel.generateHash(req.body.newPassword, (salt, hash) => {
       const acc = account;
       acc.password = hash;
@@ -108,6 +118,7 @@ const updatePassword = (request, response) => {
 
       const savePromise = acc.save();
 
+      // Save the new password
       savePromise.then(() => {
         req.session.account = Account.AccountModel.toAPI(account);
         res.status(204).send();
@@ -118,6 +129,7 @@ const updatePassword = (request, response) => {
   });
 };
 
+// Generate a new csrf token for a user
 const getToken = (request, response) => {
   const req = request;
   const res = response;

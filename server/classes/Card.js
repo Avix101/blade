@@ -1,3 +1,5 @@
+// All card objects have a value, sort value, name, image file, and potentially an altered value
+// (for effect cards)
 class Card {
   constructor(template) {
     this.value = template.value;
@@ -7,6 +9,7 @@ class Card {
     this.alterValue = null;
   }
 
+  // Alters the value of a card temporarily
   alterValue(value) {
     this.alterValue = value;
   }

@@ -1,6 +1,7 @@
 let profileSelection;
 let profilePics;
 
+//Process a request to login to a user's account
 const handleLogin = (e) => {
 	e.preventDefault();
 	
@@ -14,6 +15,7 @@ const handleLogin = (e) => {
 	return false;
 };
 
+//Construct a login window / form that allows the user to enter their details
 const LoginWindow = (props) => {
 	return (
 		<form id="loginForm" name="loginForm"
@@ -49,6 +51,7 @@ const LoginWindow = (props) => {
 	);
 };
 
+//Render the login window
 const createLoginWindow = (csrf) => {
 	ReactDOM.render(
 		<LoginWindow csrf={csrf} />,
@@ -56,6 +59,7 @@ const createLoginWindow = (csrf) => {
 	);
 };
 
+//Handle a request from a user to sign up for a new account
 const handleSignup = (e) => {
 	e.preventDefault();
 	
@@ -74,6 +78,7 @@ const handleSignup = (e) => {
 	return false;
 };
 
+//Construct a sign up window that allows users to select a username, password, and profile character
 const SignupWindow = (props) => {
 	return (
 		<form id="signupForm"
@@ -125,12 +130,14 @@ const SignupWindow = (props) => {
 	);
 };
 
+//If the user selects a different profile character, update the preview image to match
 const alterPreviewImage = (e) => {
   const select = document.querySelector("#profileImgSelect");
   const key = select.options[select.selectedIndex].value;
   document.querySelector("#profilePreview").src = profilePics[key].imageFile;
 }
 
+//Construct a profile character selection window
 const ProfileSelection = (props) => {
   
   const profileKeys = Object.keys(props.profiles);
@@ -151,14 +158,15 @@ const ProfileSelection = (props) => {
   );
 };
 
+//Render / populate the character selection window
 const populateProfileSelection = (profiles) => {
-  console.log(profiles);
   ReactDOM.render(
     <ProfileSelection profiles={profiles} />,
     profileSelection
   );
 }
 
+//Render the signup window
 const createSignupWindow = (csrf) => {
 	ReactDOM.render(
 		<SignupWindow csrf={csrf} />,
@@ -166,6 +174,7 @@ const createSignupWindow = (csrf) => {
 	);
 };
 
+//Setup the login / signup page
 const setup = (csrf) => {
 	const loginButton = document.querySelector("#loginButton");
 	const signupButton = document.querySelector("#signupButton");
@@ -176,6 +185,7 @@ const setup = (csrf) => {
 		return false;
 	});
 	
+  //If the user switches contexts, update the shown form
 	signupButton.addEventListener("click", (e) => {
 		e.preventDefault();
 		createSignupWindow(csrf);
@@ -188,12 +198,14 @@ const setup = (csrf) => {
 	createLoginWindow(csrf);
 };
 
+//Get a new csrf token from the server
 const getToken = () => {
 	sendAjax('GET', '/getToken', null, (result) => {
 		setup(result.csrfToken);
 	});
 };
 
+//Get all possible profile characters from the server
 const getProfiles = () => {
   sendAjax('GET', '/getProfiles', null, (data) => {
     populateProfileSelection(data.profilePics);
@@ -201,6 +213,7 @@ const getProfiles = () => {
   });
 };
 
+//When the page loads, get a token
 $(document).ready(() => {
 	getToken();
 });

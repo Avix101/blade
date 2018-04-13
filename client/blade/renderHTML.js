@@ -5,6 +5,7 @@ const GameWindow = (props) => {
   );
 };
 
+//Construct the right panel which holds a Youtube iframe and a chat box
 const MusicAndChatWindow = (props) => {
   return (
     <div className="text-center">
@@ -28,6 +29,7 @@ const MusicAndChatWindow = (props) => {
   );
 }
 
+//Render the right panel
 const renderRightPanel = () => {
   ReactDOM.render(
     <MusicAndChatWindow />,
@@ -35,6 +37,7 @@ const renderRightPanel = () => {
   );
 };
 
+//Render the main game
 const renderGame = (width, height) => {
   ReactDOM.render(
     <GameWindow width={width} height={height} />,
@@ -51,24 +54,29 @@ const renderGame = (width, height) => {
   renderRightPanel();
 };
 
+//Disables the auto-submit functionality of a form
 const disableDefaultForm = (e) => {
   e.preventDefault();
   return false;
 };
 
+//Handle a request to change a password
 const handlePasswordChange = (e) => {
 	e.preventDefault();
 	
+  //Password fields cannot be empty
 	if($("#newPassword").val() == '' || $("#newPassword2").val() == '' || $("#password").val() == ''){
 		handleError("All fields are required to change password.");
 		return false;
 	}
   
+  //New password and password confirmation should match
   if($("#newPassword").val() !==  $("#newPassword2").val()){
     handleError("New password and password confirmation must match");
     return false;
   }
 
+  //Send the data to the server via Ajax
   sendAjax('POST', $("#passwordChangeForm").attr("action"), $("#passwordChangeForm").serialize(), () => {
     handleSuccess("Password successfully changed!");
     $("#newPassword").val("");
@@ -79,6 +87,7 @@ const handlePasswordChange = (e) => {
 	return false;
 };
 
+//Handle a request to submit feedback
 const handleFeedback = (e) => {
   e.preventDefault();
   
@@ -95,6 +104,7 @@ const handleFeedback = (e) => {
   return false;
 };
 
+//Construct a window to create / join a room for playing Blade
 const RoomWindow = (props) => {
   
   if(props.renderEmpty){
@@ -103,6 +113,7 @@ const RoomWindow = (props) => {
   
   let roomOptions;
   
+  //Construct a list of available rooms if there are any
   const bgColor = "bg-secondary";
   if(props.rooms.length > 0){
     roomOptions = props.rooms.map((room) => {
@@ -121,7 +132,7 @@ const RoomWindow = (props) => {
     )];
   }
   
-  
+  //Return the created and formatted form
   return (
     <div id="roomSelect">
       <h1>Game Select</h1>
@@ -158,6 +169,7 @@ const RoomWindow = (props) => {
   );
 };
 
+//Construct an instructions panel for the main section of the site
 const InstructionsWindow = (props) => {
   return (
     <div className="container">
@@ -225,6 +237,7 @@ const InstructionsWindow = (props) => {
   );
 };
 
+//Construct an about window that holds info pertaining to Trails of Cold Steel I and II
 const AboutWindow = (props) => {
   return (
     <div className="container">
@@ -264,6 +277,7 @@ const AboutWindow = (props) => {
   );
 };
 
+//Construct a panel / form for submitting user feedback about the site
 const FeedbackWindow = (props) => {
   return(
     <div className="container">
@@ -303,6 +317,7 @@ const FeedbackWindow = (props) => {
   );
 };
 
+//Construct a profile panel that holds user info, a password change screen, and game history data
 const ProfileWindow = (props) => {
   return (
     <div className="container">
@@ -369,16 +384,17 @@ const ProfileWindow = (props) => {
   );
 };
 
+//Construct a game history panel the lists a user's previous matches
 const GameHistory = (props) => {
   
-  console.log(props.games);
-  
+  //Sort the games by most recently played to least recently
   let games = props.games.sort((gameA, gameB) => {
     const timeA = new Date(gameA.date).getTime();
     const timeB = new Date(gameB.date).getTime();
     return timeB - timeA;
   });
   
+  //Create a panel that holds all relevant data pertaining to game result
   let wins = 0;
   let losses = 0;
   games = games.map((game, index) => {
@@ -433,6 +449,7 @@ const GameHistory = (props) => {
   const winGameBarWidth = {width: `${(wins / games.length) * 100}%`};
   const lossGameBarWidth = {width: `${(losses / games.length) * 100}%`};
   
+  //Build the entire game history panel, with all game results included
   return (
     <div>
       <h2>Game History</h2>
@@ -480,6 +497,7 @@ const GameHistory = (props) => {
   );
 }
 
+//Render the left panel as empty
 const clearLeftPane = () => {
   ReactDOM.render(
     <div></div>,
@@ -487,6 +505,7 @@ const clearLeftPane = () => {
   );
 };
 
+//Make a call to render the game history section
 const renderGameHistory = (games) => {
   ReactDOM.render(
     <GameHistory games={games} />,
@@ -494,6 +513,7 @@ const renderGameHistory = (games) => {
   );
 };
 
+//Make a call to render the profile panel
 const renderProfile = () => {
   getTokenWithCallback((csrfToken) => {
     ReactDOM.render(
@@ -502,6 +522,7 @@ const renderProfile = () => {
     );
   });
   
+  //Request game history data
   sendAjax('GET', '/getGameHistory', null, (data) => {
     renderGameHistory(data.data);
   });
@@ -509,6 +530,7 @@ const renderProfile = () => {
   clearLeftPane();
 };
 
+//Make a call to render the feedback panel
 const renderFeedback = () => {
   getTokenWithCallback((csrfToken) => {
     ReactDOM.render(
@@ -520,6 +542,7 @@ const renderFeedback = () => {
   clearLeftPane();
 };
 
+//Make a call to render the about ToCS I and II panel
 const renderAbout = () => {
   ReactDOM.render(
     <AboutWindow />,
@@ -528,6 +551,7 @@ const renderAbout = () => {
   clearLeftPane();
 };
 
+//Make a call to render the instructions panel
 const renderInstructions = () => {
   ReactDOM.render(
     <InstructionsWindow />,
@@ -537,6 +561,7 @@ const renderInstructions = () => {
   clearLeftPane();
 };
 
+//Request a newe csrf token and then execute a callback when one is retrieved
 const getTokenWithCallback = (callback) => {
 	sendAjax('GET', '/getToken', null, (result) => {
 		if(callback){
@@ -545,6 +570,7 @@ const getTokenWithCallback = (callback) => {
 	});
 };
 
+//Render the room selection panel (left side)
 const renderRoomSelection = (rooms, renderEmpty) => {
   ReactDOM.render(
     <RoomWindow rooms={rooms} renderEmpty={renderEmpty} />,

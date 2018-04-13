@@ -4,6 +4,7 @@ mongoose.Promise = global.Promise;
 
 let FeedbackModel = {};
 
+// Construct a feedback schema
 const FeedbackSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -24,6 +25,7 @@ const FeedbackSchema = new mongoose.Schema({
   },
 });
 
+// Turn the schema into a model
 FeedbackModel = mongoose.model('Feedback', FeedbackSchema);
 
 module.exports.FeedbackModel = FeedbackModel;

@@ -17,7 +17,7 @@ const attach = (app) => {
   // Provide a favicon when the browser requests it
   app.use(favicon(`${__dirname}/../hosted/img/favicon.png`));
 
-  // Handle main http requests
+  // Handle main http requests (GET and POST)
   app.get('/getToken', mid.requiresSecure, controllers.Account.getToken);
   app.get('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
   app.post('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.login);
@@ -31,6 +31,7 @@ const attach = (app) => {
   app.get('/blade', mid.requiresLogin, controllers.Blade.main);
   app.get('/', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
 
+  // In the event that none of the above match, run the notFound middleware
   app.get('*', mid.notFound);
 };
 

@@ -1,5 +1,7 @@
 const socketHandler = require('./../socketHandler.js');
 
+// This function creates a new array from a given one,
+// but obfuscates the contents of the original array if required
 const processArray = (array, obfuscate) => {
   if (obfuscate) {
     return array.map(() => undefined);
@@ -7,6 +9,7 @@ const processArray = (array, obfuscate) => {
   return array;
 };
 
+// The game class is used to store game specific details and to process user actions
 class Game {
   constructor(room, deck) {
     this.room = room;
@@ -36,6 +39,8 @@ class Game {
     };
   }
 
+  // This adds a function to the update queue
+  // The updateQueue will execute the next function when both players are ready
   queueUpdate(func) {
     if (this.playerReady.player1 && this.playerReady.player2) {
       func();
@@ -46,8 +51,10 @@ class Game {
     }
   }
 
+  // Proccess a request to change a player's ready status
   readyPlayer(status, ready) {
     this.playerReady[status] = ready;
+    // If both players are ready, execute the next function
     if (this.playerReady.player1 && this.playerReady.player2) {
       if (this.updateQueue.length > 0) {
         const func = this.updateQueue[0];
@@ -59,10 +66,12 @@ class Game {
     }
   }
 
+  // Check the ready status of both players
   checkReadyStatus() {
     return this.playerReady.player1 && this.playerReady.player2;
   }
 
+  // Randomly allocate the given number of cards to each player
   allocateCards(numPerPlayer) {
     for (let i = 0; i < numPerPlayer; i++) {
       const randIndex1 = Math.floor(Math.random() * this.deck.length);
@@ -90,34 +99,42 @@ class Game {
     }
   }
 
+  // Get player 1's cards
   getPlayer1Cards(obfuscate) {
     return processArray(this.player1Cards, obfuscate);
   }
 
+  // Get player 2's cards
   getPlayer2Cards(obfuscate) {
     return processArray(this.player2Cards, obfuscate);
   }
 
+  // Get player 1's deck
   getPlayer1Deck(obfuscate) {
     return processArray(this.player1Deck, obfuscate);
   }
 
+  // Get player 2's deck
   getPlayer2Deck(obfuscate) {
     return processArray(this.player2Deck, obfuscate);
   }
 
+  // Get the current turn owner
   getTurnOwner() {
     return this.gameState.turnOwner;
   }
 
+  // Get the current gamestate
   getGameState() {
     return this.gameState;
   }
 
+  // Clear the fields for both players
   clearFields() {
     this.player1Field = [];
     this.player2Field = [];
 
+    // Reset gamestate
     this.gameState.clearFields = true;
     this.gameState.turnType = 'pickFromDeck';
     this.gameState.turnOwner = null;
@@ -127,11 +144,13 @@ class Game {
     this.gameState.player1Points = Game.calcPoints(this.player1Field);
     this.gameState.player2Points = Game.calcPoints(this.player2Field);
 
+    // If decks are empty, resolve to a tie
     if (this.getPlayer1Deck().length === 0 || this.getPlayer2Deck().length === 0) {
       this.resolveGame('tie');
     }
   }
 
+  // Determine the starting player based on the current scores (After picking from deck)
   pickStartingPlayer() {
     if (this.gameState.player1Points > this.gameState.player2Points) {
       this.gameState.turnOwner = 'player2';
@@ -151,6 +170,7 @@ class Game {
     }
   }
 
+  // A static function to check a card collection for any non-special cards
   static checkForNonSpecials(cardCollection) {
     for (let i = 0; i < cardCollection.length; i++) {
       const card = cardCollection[i];
@@ -168,6 +188,7 @@ class Game {
     return false;
   }
 
+  // Switch the turn owner, but resolve the game if the player can't play anything
   switchTurnOwner() {
     if (this.gameState.turnOwner === 'player1') {
       this.gameState.turnOwner = 'player2';
@@ -184,20 +205,24 @@ class Game {
     }
   }
 
+  // Reset the clear fields flag
   resetClearFlag() {
     this.gameState.clearFields = false;
   }
 
+  // Calculate the number of points accumulated in a card collection
   static calcPoints(cardCollection) {
     let currentPoints = 0;
 
     for (let i = 0; i < cardCollection.length; i++) {
       const card = cardCollection[i];
 
+      // If a card's value is altered (e.g. bolt) use it's altered value
       if (card.alterValue !== null) {
         currentPoints += card.alterValue;
       } else {
         switch (card.ref) {
+          // Forces double the current total (cards played before it)
           case 'force':
             currentPoints *= 2;
             break;
@@ -211,6 +236,7 @@ class Game {
     return currentPoints;
   }
 
+  // Resolve a game and update the players of the ending gamestate
   resolveGame(loser) {
     this.gameState.turnType = 'end';
     this.gameState.turnOwner = null;
@@ -222,6 +248,7 @@ class Game {
       this.gameState.winner = 'player1';
     }
 
+    // Save the game result, and update players
     setTimeout(() => {
       this.queueUpdate(() => {
         socketHandler.saveGame(this.room, this.gameState, () => {
@@ -232,6 +259,7 @@ class Game {
     }, 50);
   }
 
+  // Resolve a game early (in the event of a disconnect)
   resolveEarly(loser, callback) {
     this.resolveGame(loser);
 
@@ -242,6 +270,7 @@ class Game {
     }
   }
 
+  // Check the current point status of players (switch turns, resolve the game, or clear the fields)
   checkPoints(status) {
     const playerPoints = status === 'player1' ?
       this.gameState.player1Points :
@@ -267,6 +296,7 @@ class Game {
     }
   }
 
+  // Process a turn request from a player
   processTurn(status, index, blastIndex, callback) {
     if (this.gameState.turnType !== 'playCard') {
       return false;
@@ -278,7 +308,9 @@ class Game {
     const opponentField = status === 'player1' ? this.player2Field : this.player1Field;
     const card = playerHand[index];
 
+    // Depending on the type of card, complete an action
     switch (card.ref) {
+      // Special cards affect the game in different ways
       case 'bolt': {
         const affectedCard = opponentField[opponentField.length - 1];
         affectedCard.alterValue = 0;
@@ -295,8 +327,8 @@ class Game {
         }
         break;
       }
+      // This is the most meddlesome card - seems to cause odd bugs
       case 'blast': {
-        console.log(opponentHand[blastIndex]);
         opponentHand.splice(blastIndex, 1);
         break;
       }
@@ -319,8 +351,10 @@ class Game {
       }
     }
 
+    // Remove the played card from the player's hand
     playerHand.splice(index, 1);
 
+    // If the card played wasn't a blast, calculate points and check turn status
     if (card.ref !== 'blast') {
       this.gameState.player1Points = Game.calcPoints(this.player1Field);
       this.gameState.player2Points = Game.calcPoints(this.player2Field);
@@ -328,8 +362,10 @@ class Game {
       this.checkPoints(status);
     }
 
+    // Update the caller with the waiting status
     const waiting = !this.checkReadyStatus();
 
+    // Queue an update to process the callback and an update to send the gamestate
     this.queueUpdate(() => {
       callback();
     });
@@ -343,6 +379,7 @@ class Game {
     return waiting;
   }
 
+  // Process a client request to pick from their deck
   pickFromDeck(status, callback) {
     if (this.gameState.turnType !== 'pickFromDeck') {
       return false;
@@ -351,6 +388,8 @@ class Game {
     const playerDeck = status === 'player1' ? this.getPlayer1Deck() : this.getPlayer2Deck();
     const playerField = status === 'player1' ? this.player1Field : this.player2Field;
 
+    // Determine if they are allowed to input
+    // Each player is allowed to draw once during this phase
     if (!this.allowInput[status]) {
       return false;
     }
@@ -360,10 +399,12 @@ class Game {
     const index = playerDeck.length - 1;
     const card = playerDeck[index];
 
+    // If the picked card is a force, its value is 1
     if (card.ref === 'force') {
       card.alterValue = 1;
     }
 
+    // Add the card to the field and process updates to the gamestate
     playerField.push(card);
     playerDeck.splice(index, 1);
 
@@ -376,6 +417,7 @@ class Game {
 
     const waiting = !this.checkReadyStatus();
 
+    // Queue updates to the clients
     this.queueUpdate(() => {
       callback(card);
     });
@@ -389,6 +431,7 @@ class Game {
     return waiting;
   }
 
+  // A static function that sorts a given card collection based on each card's sort value
   static sortDeck(cardCollection) {
     const sortedArray = cardCollection.sort((cardA, cardB) => cardB.sortValue - cardA.sortValue);
     sortedArray.reverse();

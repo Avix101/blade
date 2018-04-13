@@ -59,6 +59,7 @@ app.disable('x-powered-by');
 app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Create a new session object
 const sessionObj = session({
   key: 'sessionid',
   store: new RedisStore({
@@ -101,12 +102,13 @@ router.attach(app);
 // Create a server for http traffic
 const server = http.createServer(app);
 
-// Attach Socket.io lib to main server and attach custom events to Socket.io lib
+// Attach Socket.io lib to main server
 const io = socketLib(server);
 
 // Attach middleware to parse socket cookie as well
 io.use(sharedSession(sessionObj, { autoSave: true }));
 
+// Attach custom events to Socket.io lib
 socketHandler.init(io);
 
 server.listen(port);

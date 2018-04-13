@@ -8,6 +8,7 @@ const iterations = 10000;
 const saltLength = 64;
 const keyLength = 64;
 
+// Construct a new schema for accounts
 const AccountSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -34,12 +35,14 @@ const AccountSchema = new mongoose.Schema({
   },
 });
 
+// Add a function to convert a doc to an account object
 AccountSchema.statics.toAPI = doc => ({
   username: doc.username,
   profile_name: doc.profile_name,
   _id: doc._id,
 });
 
+// Validate a user's password
 const validatePassword = (doc, password, callback) => {
   const pass = doc.password;
 
@@ -51,6 +54,7 @@ const validatePassword = (doc, password, callback) => {
   });
 };
 
+// Find an account by username
 AccountSchema.statics.findByUsername = (name, callback) => {
   const search = {
     username: name,
@@ -59,6 +63,7 @@ AccountSchema.statics.findByUsername = (name, callback) => {
   return AccountModel.findOne(search, callback);
 };
 
+// Find an account by Id
 AccountSchema.statics.findById = (id, callback) => {
   const search = {
     _id: id,
@@ -67,6 +72,7 @@ AccountSchema.statics.findById = (id, callback) => {
   return AccountModel.findOne(search, callback);
 };
 
+// Find multiple accounts given an array of Ids
 AccountSchema.statics.findByIdMultiple = (ids, callback) => {
   const search = {
     _id: { $in: ids },
@@ -75,6 +81,7 @@ AccountSchema.statics.findByIdMultiple = (ids, callback) => {
   return AccountModel.find(search, callback);
 };
 
+// Generate a new hash and salt for a password
 AccountSchema.statics.generateHash = (password, callback) => {
   const salt = crypto.randomBytes(saltLength);
 
@@ -82,6 +89,7 @@ AccountSchema.statics.generateHash = (password, callback) => {
     callback(salt, hash.toString('hex')));
 };
 
+// Authenticate a user
 AccountSchema.statics.authenticate = (username, password, callback) =>
   AccountModel.findByUsername(username, (err, doc) => {
     if (err) {

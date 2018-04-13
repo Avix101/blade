@@ -6,15 +6,15 @@ const { Feedback } = models;
 const { GameResult } = models;
 const { Account } = models;
 
-// Render the main page
+// Render the main page, pass in useful data to the template engine
 const main = (req, res) => {
   const profileData = profilePics[req.session.account.profile_name];
   const { username } = req.session.account;
   res.render('blade', { profileData, username });
 };
 
+// Get a players profile image
 const getProfile = (request, response) => {
-  console.log(request.query);
   const req = request;
   const res = response;
 
@@ -28,6 +28,7 @@ const getProfile = (request, response) => {
   res.status(200).json({ imageFile: profile.imageFile });
 };
 
+// Get all possible profile images
 const getAllProfilePics = (req, res) => {
   if (Object.keys(profilePics).length <= 0) {
     return res.status(500).json({ error: 'Profile pics not loaded by server' });
@@ -36,6 +37,7 @@ const getAllProfilePics = (req, res) => {
   return res.json({ profilePics });
 };
 
+// Submit feedback from the client about the site
 const submitFeedback = (request, response) => {
   const req = request;
   const res = response;
@@ -67,11 +69,13 @@ const submitFeedback = (request, response) => {
   });
 };
 
+// Bundle player data in a payload that is acceptable to send across the network (security)
 const bundlePlayerData = account => ({
   username: account.username,
   profileData: profilePics[account.profile_name],
 });
 
+// Get all relevant game results that a player was part of
 const getGameHistory = (req, res) => {
   const id = req.session.account._id;
 
@@ -95,6 +99,7 @@ const getGameHistory = (req, res) => {
       }
     }
 
+    // Find all relevant account ids
     return Account.AccountModel.findByIdMultiple(accountIds, (err2, results) => {
       if (err2) {
         res.status(500).json({ error: 'Game history could not be retrieved.' });
@@ -105,6 +110,7 @@ const getGameHistory = (req, res) => {
         accounts[account._id] = bundlePlayerData(account);
       }
 
+      // Generate and send game data to the requester
       const data = [];
       for (let i = 0; i < games.length; i++) {
         const game = games[i];

@@ -4,6 +4,7 @@ const imageDir = '/hosted/img/player_icons/';
 const imageLink = '/assets/img/player_icons/';
 const profilePicStruct = {};
 
+// Dynamically collect all images within a hosted folder and store their names and links
 fs.readdir(`${__dirname}/../../${imageDir}`, (err, files) => {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];

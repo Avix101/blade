@@ -4,6 +4,7 @@ mongoose.Promise = global.Promise;
 
 let GameResultModel = {};
 
+// Construct a game results schema (stores ids and scores)
 const GameResultSchema = new mongoose.Schema({
   player1Id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -35,6 +36,7 @@ const GameResultSchema = new mongoose.Schema({
   },
 });
 
+// A static function that finds all games that a player (account) was involved in
 GameResultSchema.statics.findAllGamesFor = (id, callback) => {
   const search = {
     $or: [

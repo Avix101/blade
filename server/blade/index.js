@@ -6,13 +6,20 @@ const { Card } = classes;
 const { Game } = classes;
 
 const games = {};
+
+// Functions to check if a game exists and get an existing game
 const gameExists = roomId => games[roomId] !== undefined;
 const getGame = roomId => games[roomId];
 
+// Each player starts with 10 cards
 const numCardsPerPlayer = 10;
 
+// Depending on the reqeusted deck type, compile an object of decks
 const getDeck = (roomId, deckType) => {
   const game = getGame(roomId);
+
+  // All decks should be obscured except for the player's deck
+  // (The player only knows their own cards)
   const deck = {
     player1: game.getPlayer1Cards(true),
     player2: game.getPlayer2Cards(true),
@@ -34,6 +41,7 @@ const getDeck = (roomId, deckType) => {
   return deck;
 };
 
+// Get a game's current state and return it
 const getGameState = (roomId) => {
   if (gameExists(roomId)) {
     const game = getGame(roomId);
@@ -43,6 +51,7 @@ const getGameState = (roomId) => {
   return null;
 };
 
+// Get a single card set instead of a whole deck (don't obscure)
 const getSingleCardSet = (roomId, type) => {
   const game = getGame(roomId);
   switch (type) {
@@ -55,6 +64,7 @@ const getSingleCardSet = (roomId, type) => {
   }
 };
 
+// Sort a given deck so that all of the cards are in proper order
 const sortDeck = (roomId, deckType, callback) => {
   const game = getGame(roomId);
   switch (deckType) {
@@ -73,6 +83,7 @@ const sortDeck = (roomId, deckType, callback) => {
   }
 };
 
+// Get all possible card images and send them to the client
 const getCardImages = () => {
   const cardImages = [];
   const cardKeys = Object.keys(deckTemplate);
@@ -84,9 +95,11 @@ const getCardImages = () => {
   return cardImages;
 };
 
+// Start a game by constructing a new deck and setting up a new game object
 const beginGame = (roomId, callback) => {
   const deck = [];
 
+  // Using the card templates, make a new deck
   const cardKeys = Object.keys(deckTemplate);
   for (let i = 0; i < cardKeys.length; i++) {
     const cardInfo = deckTemplate[cardKeys[i]];
@@ -99,25 +112,27 @@ const beginGame = (roomId, callback) => {
   games[roomId] = new Game(roomId, deck);
   const game = getGame(roomId);
   game.allocateCards(numCardsPerPlayer);
-  // game.pickStartingPlayer();
 
   callback();
 };
 
+// Validate that a card exists in a players hand
 const validateCard = (roomId, status, index) => {
   const deck = getSingleCardSet(roomId, status);
   if (index >= 0 && index < deck.length) {
     return true;
   }
-  console.log('invalid card');
+
   return false;
 };
 
+// Pick the top card from a player's deck
 const pickFromDeck = (roomId, status, callback) => {
   const game = getGame(roomId);
   return game.pickFromDeck(status, callback);
 };
 
+// Play a card from a player's hand
 const playCard = (roomId, status, index, blastIndex, callback) => {
   const game = getGame(roomId);
   const deck = getSingleCardSet(roomId, status);
@@ -127,10 +142,10 @@ const playCard = (roomId, status, index, blastIndex, callback) => {
     return false;
   }
 
+  // Validate the provided blast index, if necessary
   let blast = blastIndex;
   const opponentStatus = status === 'player1' ? 'player2' : 'player1';
   if (!blast || !validateCard(roomId, opponentStatus, blast)) {
-    console.log('hit');
     blast = 0;
   }
 
@@ -139,15 +154,18 @@ const playCard = (roomId, status, index, blastIndex, callback) => {
   });
 };
 
+// In the event of a player disconnect, resolve the game early
 const resolveDisconnect = (roomId, status, callback) => {
   const game = getGame(roomId);
   game.resolveEarly(status, callback);
 };
 
+// Kill a game on request
 const killGame = (roomId) => {
   delete games[roomId];
 };
 
+// Process a client reqeust to change their ready status
 const playerReady = (roomId, status, ready) => {
   if (status !== 'player1' && status !== 'player2') {
     return;

@@ -1,15 +1,15 @@
+//Declare all necessary variables
 let viewport, viewCtx, prepCanvas, prepCtx;
 let socket, hash;
 let bladeMat;
-let cardsLoaded = 0;
 let animationFrame;
 let deck = {};
 const NULL_FUNC = () => {};
 let readyToPlay = false;
 let selectedCard = null;
 let mousePos = {x: 0, y: 0};
-let bladeLink, instructionsLink, aboutLink, feedbackLink, disclaimerLink, profileLink
 
+//Variables relating to gamestate
 let playerStatus;
 let playerProfiles = {};
 let blastSelect = false;
@@ -30,6 +30,7 @@ let fields = {
   'player2': [],
 };
 
+//Current page view
 let pageView;
 
 const aspectRatio = 16 / 9;
@@ -45,6 +46,7 @@ const calcDisplayDimensions = () => {
   };
 }
 
+//Resize the display canvas if its currently onscreen
 const resizeGame = (e) => {
   if(pageView === "#blade"){
     const dimensions = calcDisplayDimensions();
@@ -52,12 +54,16 @@ const resizeGame = (e) => {
   }
 }
 
+//Load the requested view
 const loadView = () => {
+  //Find the page's hash
   const hash = window.location.hash;
   pageView = hash;
   
+  //Always render the right panel (regardless of view)
   renderRightPanel();
   
+  //Depending on the hash, render the main content
   switch(hash){
     case "#blade": {
       const dimensions = calcDisplayDimensions();
@@ -89,8 +95,10 @@ const loadView = () => {
   }
 };
 
+//Run this function when the page loads
 const init = () => {
   
+  //Load the requested view
   loadView();
   
   //Grab static images included in client download
@@ -119,11 +127,8 @@ const init = () => {
   socket.on('gamestate', updateGamestate);
   socket.on('gamedata', notifyGameData);
   
-  //Eventually switch to server call to load cards
-  //loadBladeCards([{name: "back", src: "/assets/img/cards/00 Back.png"}]);
-  
+  //Start the update loop!
   animationFrame = requestAnimationFrame(update);
-  
   addToChat("You have joined the lobby");
 };
 
