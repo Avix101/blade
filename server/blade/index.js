@@ -51,6 +51,16 @@ const getGameState = (roomId) => {
   return null;
 };
 
+// Get a game's metadata and return it
+const getGameMeta = (roomId) => {
+  if (gameExists(roomId)) {
+    const game = getGame(roomId);
+    return game.getMeta();
+  }
+
+  return null;
+};
+
 // Get a single card set instead of a whole deck (don't obscure)
 const getSingleCardSet = (roomId, type) => {
   const game = getGame(roomId);
@@ -116,6 +126,41 @@ const beginGame = (roomId, callback) => {
   callback();
 };
 
+// Build and return a specific card set
+const buildCardSet = (cardEncoding) => {
+  const cards = [];
+  for (let i = 0; i < cardEncoding.length; i++) {
+    let cardNum = cardEncoding.charAt(i);
+
+    // Adjust the names of special cards (all cards are stored as integers)
+    switch (cardNum) {
+      case '0':
+        cardNum = 'back';
+        break;
+      case '8':
+        cardNum = 'bolt';
+        break;
+      case '9':
+        cardNum = 'mirror';
+        break;
+      case 'a':
+        cardNum = 'blast';
+        break;
+      case 'b':
+        cardNum = 'force';
+        break;
+      default:
+        cardNum = parseInt(cardNum, 10);
+        break;
+    }
+
+    const card = new Card(deckTemplate[cardNum]);
+    cards.push(card);
+  }
+
+  return cards;
+};
+
 // Validate that a card exists in a players hand
 const validateCard = (roomId, status, index) => {
   const deck = getSingleCardSet(roomId, status);
@@ -178,8 +223,10 @@ const playerReady = (roomId, status, ready) => {
 module.exports = {
   getCardImages,
   beginGame,
+  buildCardSet,
   gameExists,
   getGameState,
+  getGameMeta,
   getGame,
   getDeck,
   sortDeck,

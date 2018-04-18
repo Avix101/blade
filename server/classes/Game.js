@@ -37,6 +37,129 @@ class Game {
       player1: true,
       player2: true,
     };
+    this.previousTurnTime = 0;
+    this.metaData = {
+      p1Hand: '',
+      p2Hand: '',
+      p1Deck: '',
+      p2Deck: '',
+      gameplay: [0, 0],
+    };
+  }
+
+  // Process card collection and reduce it to integers
+  static reduceCardCollection(cardCollection) {
+    let encoding = '';
+
+    for (let i = 0; i < cardCollection.length; i++) {
+      const card = cardCollection[i];
+      let cardNum;
+
+      switch (card.ref) {
+        case 'back':
+          cardNum = 0;
+          break;
+        case 'bolt':
+          cardNum = 8;
+          break;
+        case 'mirror':
+          cardNum = 9;
+          break;
+        case 'blast':
+          cardNum = 10;
+          break;
+        case 'force':
+          cardNum = 11;
+          break;
+        default:
+          cardNum = card.ref;
+          break;
+      }
+
+      const hex = cardNum.toString(16);
+      encoding = `${encoding}${hex}`;
+    }
+
+    return encoding;
+  }
+
+  // Store the original state of all card collections
+  sealOriginalGamestate() {
+    this.metaData.p1Hand = Game.reduceCardCollection(this.player1Cards);
+    this.metaData.p2Hand = Game.reduceCardCollection(this.player2Cards);
+    this.metaData.p1Deck = Game.reduceCardCollection(this.player1Deck);
+    this.metaData.p2Deck = Game.reduceCardCollection(this.player2Deck);
+  }
+
+  // Record an action completed by the game
+  encodeTurn(flag, arg0, arg1, arg2) {
+    // Record the gameplay flag
+    this.metaData.gameplay.push(flag);
+
+    // Store additional data based on the flag
+    switch (flag) {
+      // Action 1: Pick from deck
+      case 1: {
+        const actor = arg0 === 'player1' ? 0 : 1;
+        this.metaData.gameplay.push(actor);
+        break;
+      }
+      // Action 2: update the gamestate (points)
+      case 2: {
+        this.metaData.gameplay.push(arg0);
+        this.metaData.gameplay.push(arg1);
+        break;
+      }
+      // Action 3: Play any non-blast card
+      case 3: {
+        const actor = arg0 === 'player1' ? 0 : 1;
+        this.metaData.gameplay.push(actor);
+        this.metaData.gameplay.push(arg1);
+        break;
+      }
+      // Action 4: Play a blast card
+      case 4: {
+        const actor = arg0 === 'player1' ? 0 : 1;
+        this.metaData.gameplay.push(actor);
+        this.metaData.gameplay.push(arg1);
+        this.metaData.gameplay.push(arg2);
+        break;
+      }
+      // Action 5: Clear the fields
+      case 5: {
+        break;
+      }
+      // Action 6: declare winner
+      case 6: {
+        let winner;
+        if (arg0 === 'tie') {
+          winner = 0;
+        } else if (arg0 === 'player1') {
+          winner = 1;
+        } else if (arg0 === 'player2') {
+          winner = 2;
+        } else {
+          winner = 3;
+        }
+
+        this.metaData.gameplay.push(winner);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+
+    // Push the time taken between turns
+    if (this.previousTurnTime === 0) {
+      this.metaData.gameplay.push(this.previousTurnTime);
+      this.previousTurnTime = new Date().getTime();
+    } else {
+      const currentTime = new Date().getTime();
+      const timeElapsed = currentTime - this.previousTurnTime;
+      this.metaData.gameplay.push(timeElapsed);
+      this.previousTurnTime = currentTime;
+    }
   }
 
   // This adds a function to the update queue
@@ -97,6 +220,9 @@ class Game {
       this.player2Deck.push(randCard2);
       this.deck.splice(randIndex2, 1);
     }
+
+    // Record original card configuration
+    this.sealOriginalGamestate();
   }
 
   // Get player 1's cards
@@ -129,6 +255,11 @@ class Game {
     return this.gameState;
   }
 
+  // Get the game's metadata
+  getMeta() {
+    return this.metaData;
+  }
+
   // Clear the fields for both players
   clearFields() {
     this.player1Field = [];
@@ -143,6 +274,10 @@ class Game {
 
     this.gameState.player1Points = Game.calcPoints(this.player1Field);
     this.gameState.player2Points = Game.calcPoints(this.player2Field);
+
+    // Encode the clear
+    this.encodeTurn(5);
+    this.encodeTurn(2, this.gameState.player1Points, this.gameState.player2Points);
 
     // If decks are empty, resolve to a tie
     if (this.getPlayer1Deck().length === 0 || this.getPlayer2Deck().length === 0) {
@@ -248,10 +383,13 @@ class Game {
       this.gameState.winner = 'player1';
     }
 
+    // Encode the game end
+    this.encodeTurn(6, this.gameState.winner);
+
     // Save the game result, and update players
     setTimeout(() => {
       this.queueUpdate(() => {
-        socketHandler.saveGame(this.room, this.gameState, () => {
+        socketHandler.saveGame(this.room, this.gameState, this.metaData, () => {
           socketHandler.sendGameState(this.room);
           socketHandler.killGame(this.room);
         });
@@ -359,7 +497,14 @@ class Game {
       this.gameState.player1Points = Game.calcPoints(this.player1Field);
       this.gameState.player2Points = Game.calcPoints(this.player2Field);
 
+      // Encode a non-blast card being played
+      this.encodeTurn(3, status, index);
+      this.encodeTurn(2, this.gameState.player1Points, this.gameState.player2Points);
+
       this.checkPoints(status);
+    } else {
+      // Encode a blast card being played
+      this.encodeTurn(4, status, index, blastIndex);
     }
 
     // Update the caller with the waiting status
@@ -410,6 +555,10 @@ class Game {
 
     this.gameState.player1Points = Game.calcPoints(this.player1Field);
     this.gameState.player2Points = Game.calcPoints(this.player2Field);
+
+    // Encode a pick from a player's deck and a gamestate update
+    this.encodeTurn(1, status);
+    this.encodeTurn(2, this.gameState.player1Points, this.gameState.player2Points);
 
     if (!this.allowInput.player1 && !this.allowInput.player2) {
       this.pickStartingPlayer();

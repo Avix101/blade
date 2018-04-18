@@ -1,6 +1,11 @@
 //The main update call which runs ideally 60 times a second
 const update = () => {
   
+  //Execute playback if enabled
+  if(isPlayingBack && readyToPlay){
+    executePlayback();
+  }
+  
   //Check for card collisions with the mouse depending on the current state
   if(blastSelect){
     checkCardCollisions(getOpponentHand(), false);
@@ -16,6 +21,8 @@ const update = () => {
 
 //Process a mouse click
 const processClick = (e) => {
+  //Update the mouse position
+  getMouse(e);
   //Depending on the gamestate, unselect a card, and update the ready status
   if(selectedCard && !gameState.winner && !gameState.waiting){
     switch(gameState.turnType){
@@ -216,6 +223,160 @@ const roomOptions = (data) => {
   }
 };
 
+//Handle playback data sent from the server
+const processPlaybackData = (data) => {
+  console.log(data);
+  endGame();
+  renderPlayback(true);
+  viewport = document.querySelector("#viewportModal");
+  viewCtx = viewport.getContext('2d');
+  roomJoined({status: "player1"});
+  
+  const game = data.game;
+  
+  setDeck({
+    player1: game.p1Hand,
+    player2: game.p2Hand,
+    p1Deck: game.p1Deck,
+    p2Deck: game.p2Deck,
+  });
+  
+  isPlayingBack = true;
+  turnSequence = game.gameplay;
+  console.log(turnSequence);
+};
+
+//Executes the next move in the playback sequence
+let playerDeckCheck;
+let opponentDeckCheck;
+const executePlayback = () => {
+  
+  //If there are no more turns to process, stop playing back
+  if(turnSequence.length <= 0){
+    isPlayingBack = false;
+    return;
+  }
+  
+  //Check if the deck length check is equal to the current player's hand size (special card hasn't finished)
+  if(playerDeckCheck){
+    if(playerDeckCheck === getPlayerHand().length){
+      return;
+    } else {
+      playerDeckCheck = null;
+    }
+  }
+  
+  if(opponentDeckCheck){
+    if(opponentDeckCheck === getOpponentHand().length){
+      return;
+    } else {
+      opponentDeckCheck = null;
+    }
+  }
+  
+  //Grab the next turn
+  const turnFlag = turnSequence.shift();
+  console.log(turnFlag);
+  
+  //A struct to determine the required actor
+  const actor = {
+    0: "player1",
+    1: "player2",
+  }
+  
+  //Depending on the first flag, play an action
+  switch(turnFlag){
+    //Action 0: sort the deck
+    case 0: {
+      sortDeck();
+      sortOpponentDeck();
+      break;
+    }
+    //Action 1: pick from a player's deck
+    case 1: {
+      const player = actor[turnSequence.shift()];
+      const card = getTopDeckCardFrom(player);
+      card.ref = card.name;
+      const data = {player, card};
+      pickFromDeck(data);
+      break;
+    }
+    //Action 2: Update the gamestate (player points in this case)
+    case 2: {
+      const update = {
+        player1Points: turnSequence.shift(),
+        player2Points: turnSequence.shift(),
+      };
+      updateGamestate(update);
+      break;
+    }
+    //Action 3: Play any card from a player's hand aside from a blast
+    case 3: {
+      const player = actor[turnSequence.shift()];
+      const index = turnSequence.shift();
+      const card = deck[player][index];
+      const data = {cardSet: player, name: card.name, index};
+      
+      //Make sure special cards finish what they set out to do before moving on
+      if(card.name === 1 || card.name === "bolt" || card.name === "mirror"){
+        const isPlayer = playerStatus === player;
+        if(isPlayer){
+          playerDeckCheck = getPlayerHand().length;
+        } else {
+          opponentDeckCheck = getOpponentHand().length;
+        }
+      }
+      
+      playCard(data);
+      break;
+    }
+    //Action 4: Play a blast from a player's hand (and target opponent's card)
+    case 4: {
+      const player = actor[turnSequence.shift()];
+      const index = turnSequence.shift();
+      const card = deck[player][index];
+      const data = {cardSet: player, name: card.name, index, blastIndex: turnSequence.shift()};
+      playerDeckCheck = getPlayerHand().length;
+      playCard(data);
+      break;
+    }
+    //Action 5: Wipe the field and start fresh
+    case 5: {
+      clearFields();
+      break;
+    }
+    //Action 6: End game
+    case 6: {
+      let winner;
+      const winnerIndex = turnSequence.shift();
+      
+      if(winnerIndex === 0){
+        winner = "Tie";
+      } else if(winnerIndex === 1){
+        winner = "player1";
+      } else if(winnerIndex === 2){
+        winner = "player2";
+      } else {
+        winner = "Unknown";
+      }
+      
+      const update = {
+        turnType: "end",
+        winner,
+      };
+      
+      updateGamestate(update);
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+  
+  //Wait time between turns
+  turnSequence.shift();
+};
+
 //When a room is selected from the existing rooms list, paste the code into the room join bar
 const onRoomSelect = (e) => {
   const roomId = document.querySelector("#roomName");
@@ -355,6 +516,15 @@ const getTopDeckCard = () => {
   }
 };
 
+//Gets the top card from a player's deck
+const getTopDeckCardFrom = (status) => {
+  if(status === 'player1'){
+    return deck.p1Deck[deck.p1Deck.length - 1];
+  } else if(status === 'player2'){
+    return deck.p2Deck[deck.p2Deck.length - 1];
+  }
+};
+
 //Gets the players deck
 const getPlayerDeck = () => {
   if(playerStatus === 'player1'){
@@ -478,7 +648,7 @@ const updateReadyStatus = (status) => {
   }
 }
 
-//Sort the player's deck and animate it
+//Sort the player's hand and animate it
 const sortDeck = (data) => {
   let playerHand = getPlayerHand();
   
@@ -492,6 +662,24 @@ const sortDeck = (data) => {
   ], () => {
     for(let i = 0; i < playerHand.length; i++){
       const card = playerHand[i];
+      card.originalLocation = {x: card.x, y: card.y};
+    }
+  });
+};
+
+//Sort the opponent's hand and animate it
+const sortOpponentDeck = (data) => {
+  let opponentHand = getOpponentHand();
+  
+  opponentHand = opponentHand.sort((cardA, cardB) => {
+    return cardB.sortValue - cardA.sortValue;
+  });
+  
+  chainAnimations([
+    [flushCards, [opponentHand, 70, false, false, true]]
+  ], () => {
+    for(let i = 0; i < opponentHand.length; i++){
+      const card = opponentHand[i];
       card.originalLocation = {x: card.x, y: card.y};
     }
   });

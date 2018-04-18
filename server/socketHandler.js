@@ -30,7 +30,7 @@ const verifyDataIntegrity = (data, expectedKeys) => {
 };
 
 // Save a game result into mongo
-const saveGame = (roomId, gameState, callback) => {
+const saveGame = (roomId, gameState, metaData, callback) => {
   // Configure socket data
   const sockets = roomHandler.getSockets(roomId);
   const [socket1, socket2] = sockets;
@@ -57,6 +57,7 @@ const saveGame = (roomId, gameState, callback) => {
     player1Score: gameState.player1Points,
     player2Score: gameState.player2Points,
     winner: gameState.winner,
+    meta: metaData,
   };
 
   const newGameResult = new GameResult.GameResultModel(gameData);
@@ -238,6 +239,47 @@ const init = (ioInstance) => {
       io.sockets.in(socket.roomJoined).emit('chatMessage', { message });
     });
 
+    // Handle a request to load playback data
+    socket.on('requestPlaybackData', (data) => {
+      // Playback data cannot be viewed during a game
+      if (verifyGameIntegrity(socket.roomJoined)) {
+        socket.emit('errorMessage', { error: 'Cannot request playback data during a game' });
+        return;
+      }
+
+      if (!verifyDataIntegrity(data, ['id'])) {
+        return;
+      }
+
+      // Search for the requested game
+      GameResult.GameResultModel.findById(data.id, (err, game) => {
+        // The game could not be found, send an error
+        if (err) {
+          socket.emit('errorMessage', { error: 'The data for this game is missing' });
+          return;
+        }
+
+        // The game contains no metadata (game created prior to implementation), send error
+        if (!game.meta) {
+          socket.emit('errorMessage', { error: 'Playback data was not recorded for this game' });
+          return;
+        }
+
+        const { meta } = game;
+
+        // Playback data successfully retrieved, format and send back to requester
+        socket.emit('playbackData', {
+          game: {
+            p1Hand: blade.buildCardSet(meta.p1Hand),
+            p2Hand: blade.buildCardSet(meta.p2Hand),
+            p1Deck: blade.buildCardSet(meta.p1Deck),
+            p2Deck: blade.buildCardSet(meta.p2Deck),
+            gameplay: meta.gameplay,
+          },
+        });
+      });
+    });
+
     // Handle a socket disconnect
     socket.on('disconnect', () => {
       const roomId = socket.roomJoined;
@@ -247,7 +289,8 @@ const init = (ioInstance) => {
       if (blade.gameExists(socket.roomJoined)) {
         blade.resolveDisconnect(roomId, status, () => {
           const gameState = blade.getGameState(socket.roomJoined);
-          saveGame(socket.roomJoined, gameState, () => {
+          const metaData = blade.getGameMeta(socket.roomJoined);
+          saveGame(socket.roomJoined, gameState, metaData, () => {
             roomHandler.leaveRoom(socket.roomJoined, socket);
           });
           blade.killGame(roomId);

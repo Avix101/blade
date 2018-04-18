@@ -25,6 +25,10 @@ const gameState = {
   waiting: false,
 };
 
+//Variables for managing playback
+let isPlayingBack = false;
+let turnSequence = [];
+
 let fields = {
   'player1': [],
   'player2': [],
@@ -51,6 +55,9 @@ const resizeGame = (e) => {
   if(pageView === "#blade"){
     const dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
+  } else if(viewport && document.querySelector("#modalContainer div").classList.contains("show")){
+    const dimensions = calcDisplayDimensions();
+    renderPlayback(true);
   }
 }
 
@@ -126,6 +133,8 @@ const init = () => {
   socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
   socket.on('gamedata', notifyGameData);
+  socket.on('playbackData', processPlaybackData);
+  socket.on('errorMessage', processError);
   
   //Start the update loop!
   animationFrame = requestAnimationFrame(update);

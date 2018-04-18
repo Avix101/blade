@@ -529,6 +529,10 @@ var gameState = {
   waiting: false
 };
 
+//Variables for managing playback
+var isPlayingBack = false;
+var turnSequence = [];
+
 var fields = {
   'player1': [],
   'player2': []
@@ -555,6 +559,9 @@ var resizeGame = function resizeGame(e) {
   if (pageView === "#blade") {
     var dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
+  } else if (viewport && document.querySelector("#modalContainer div").classList.contains("show")) {
+    var _dimensions = calcDisplayDimensions();
+    renderPlayback(true);
   }
 };
 
@@ -597,8 +604,8 @@ var loadView = function loadView() {
       }
     default:
       {
-        var _dimensions = calcDisplayDimensions();
-        renderGame(_dimensions.width, _dimensions.height);
+        var _dimensions2 = calcDisplayDimensions();
+        renderGame(_dimensions2.width, _dimensions2.height);
         pageView = "#blade";
         break;
       }
@@ -636,6 +643,8 @@ var init = function init() {
   socket.on('turnAccepted', turnAccepted);
   socket.on('gamestate', updateGamestate);
   socket.on('gamedata', notifyGameData);
+  socket.on('playbackData', processPlaybackData);
+  socket.on('errorMessage', processError);
 
   //Start the update loop!
   animationFrame = requestAnimationFrame(update);
@@ -700,6 +709,7 @@ var renderRightPanel = function renderRightPanel() {
 
 //Render the main game
 var renderGame = function renderGame(width, height) {
+
   ReactDOM.render(React.createElement(GameWindow, { width: width, height: height }), document.querySelector("#main"));
 
   //Hook up viewport (display canvas) to JS code
@@ -743,6 +753,32 @@ var handlePasswordChange = function handlePasswordChange(e) {
   });
 
   return false;
+};
+
+//Process a request to hide a modal
+var hideModal = function hideModal() {
+  var modal = document.querySelector("#modalContainer div");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove("show");
+  modal.classList.add("hide");
+
+  endGame();
+  deck = {};
+  fields = {
+    'player1': [],
+    'player2': []
+  };
+  turnSequence = [];
+  gameState.turnType = "begin";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
 };
 
 //Handle a request to submit feedback
@@ -1377,6 +1413,17 @@ var GameHistory = function GameHistory(props) {
           "Date of Game: ",
           date.toDateString()
         )
+      ),
+      React.createElement(
+        "div",
+        { className: "buttonDiv" },
+        React.createElement("span", { "data-id": game.id }),
+        React.createElement(
+          "button",
+          { className: "btn btn-lg btn-primary", onClick: requestPlaybackData },
+          "Watch Replay ",
+          React.createElement("span", { className: "fas fa-play" })
+        )
       )
     );
   });
@@ -1471,6 +1518,101 @@ var GameHistory = function GameHistory(props) {
   );
 };
 
+//Build a pop-out modal window to display to the user
+var SiteModal = function SiteModal(props) {
+  var id = "playbackModal";
+
+  var modalBody = void 0;
+
+  if (props.render) {
+    var dimensions = calcDisplayDimensions();
+    modalBody = React.createElement("canvas", { id: "viewportModal", width: dimensions.width, height: dimensions.height });
+  } else {
+    modalBody = React.createElement(
+      "p",
+      null,
+      "Loading playback data... ",
+      React.createElement("span", { className: "fas fa-sync fa-spin" })
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { id: id, className: "modal show", tabindex: "-1", role: "dialog" },
+    React.createElement("div", { id: "pageMask" }),
+    React.createElement(
+      "div",
+      { className: "modal-dialog", role: "document" },
+      React.createElement(
+        "div",
+        { className: "modal-content" },
+        React.createElement(
+          "div",
+          { className: "modal-header" },
+          React.createElement(
+            "h1",
+            { className: "modal-title" },
+            "Game Playback"
+          ),
+          React.createElement(
+            "button",
+            { className: "close", "data-dismiss": "modal", "aria-label": "Close", onClick: hideModal },
+            React.createElement(
+              "span",
+              { "aria-hidden": "true" },
+              "\xD7"
+            )
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "modal-body" },
+          modalBody
+        ),
+        React.createElement(
+          "div",
+          { className: "modal-footer" },
+          React.createElement(
+            "button",
+            { className: "btn btn-lg btn-primary", "data-dismiss": "modal", onClick: hideModal },
+            "Done"
+          )
+        )
+      )
+    )
+  );
+};
+
+//Request playback data from the server
+var requestPlaybackData = function requestPlaybackData(e) {
+  var id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
+
+  setTimeout(function () {
+    socket.emit('requestPlaybackData', { id: id });
+  }, 5000);
+
+  renderPlayback(false);
+};
+
+//Handle an error sent from the server
+var processError = function processError(data) {
+  handleError(data.error, false);
+};
+
+//Render the site's dialog box / modal (playback mode)
+var renderPlayback = function renderPlayback(renderDisplay) {
+  ReactDOM.render(React.createElement(SiteModal, { render: renderDisplay }), document.querySelector("#modalContainer"));
+
+  var modal = document.querySelector("#modalContainer div");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove("hide");
+  modal.classList.add("show");
+};
+
 //Render the left panel as empty
 var clearLeftPane = function clearLeftPane() {
   ReactDOM.render(React.createElement("div", null), document.querySelector("#room"));
@@ -1535,6 +1677,11 @@ var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
 //The main update call which runs ideally 60 times a second
 var update = function update() {
 
+  //Execute playback if enabled
+  if (isPlayingBack && readyToPlay) {
+    executePlayback();
+  }
+
   //Check for card collisions with the mouse depending on the current state
   if (blastSelect) {
     checkCardCollisions(getOpponentHand(), false);
@@ -1550,6 +1697,8 @@ var update = function update() {
 
 //Process a mouse click
 var processClick = function processClick(e) {
+  //Update the mouse position
+  getMouse(e);
   //Depending on the gamestate, unselect a card, and update the ready status
   if (selectedCard && !gameState.winner && !gameState.waiting) {
     switch (gameState.turnType) {
@@ -1762,6 +1911,167 @@ var roomOptions = function roomOptions(data) {
   }
 };
 
+//Handle playback data sent from the server
+var processPlaybackData = function processPlaybackData(data) {
+  console.log(data);
+  endGame();
+  renderPlayback(true);
+  viewport = document.querySelector("#viewportModal");
+  viewCtx = viewport.getContext('2d');
+  roomJoined({ status: "player1" });
+
+  var game = data.game;
+
+  setDeck({
+    player1: game.p1Hand,
+    player2: game.p2Hand,
+    p1Deck: game.p1Deck,
+    p2Deck: game.p2Deck
+  });
+
+  isPlayingBack = true;
+  turnSequence = game.gameplay;
+  console.log(turnSequence);
+};
+
+//Executes the next move in the playback sequence
+var playerDeckCheck = void 0;
+var opponentDeckCheck = void 0;
+var executePlayback = function executePlayback() {
+
+  //If there are no more turns to process, stop playing back
+  if (turnSequence.length <= 0) {
+    isPlayingBack = false;
+    return;
+  }
+
+  //Check if the deck length check is equal to the current player's hand size (special card hasn't finished)
+  if (playerDeckCheck) {
+    if (playerDeckCheck === getPlayerHand().length) {
+      return;
+    } else {
+      playerDeckCheck = null;
+    }
+  }
+
+  if (opponentDeckCheck) {
+    if (opponentDeckCheck === getOpponentHand().length) {
+      return;
+    } else {
+      opponentDeckCheck = null;
+    }
+  }
+
+  //Grab the next turn
+  var turnFlag = turnSequence.shift();
+  console.log(turnFlag);
+
+  //A struct to determine the required actor
+  var actor = {
+    0: "player1",
+    1: "player2"
+
+    //Depending on the first flag, play an action
+  };switch (turnFlag) {
+    //Action 0: sort the deck
+    case 0:
+      {
+        sortDeck();
+        sortOpponentDeck();
+        break;
+      }
+    //Action 1: pick from a player's deck
+    case 1:
+      {
+        var player = actor[turnSequence.shift()];
+        var card = getTopDeckCardFrom(player);
+        card.ref = card.name;
+        var data = { player: player, card: card };
+        pickFromDeck(data);
+        break;
+      }
+    //Action 2: Update the gamestate (player points in this case)
+    case 2:
+      {
+        var _update = {
+          player1Points: turnSequence.shift(),
+          player2Points: turnSequence.shift()
+        };
+        updateGamestate(_update);
+        break;
+      }
+    //Action 3: Play any card from a player's hand aside from a blast
+    case 3:
+      {
+        var _player = actor[turnSequence.shift()];
+        var index = turnSequence.shift();
+        var _card = deck[_player][index];
+        var _data = { cardSet: _player, name: _card.name, index: index };
+
+        //Make sure special cards finish what they set out to do before moving on
+        if (_card.name === 1 || _card.name === "bolt" || _card.name === "mirror") {
+          var isPlayer = playerStatus === _player;
+          if (isPlayer) {
+            playerDeckCheck = getPlayerHand().length;
+          } else {
+            opponentDeckCheck = getOpponentHand().length;
+          }
+        }
+
+        playCard(_data);
+        break;
+      }
+    //Action 4: Play a blast from a player's hand (and target opponent's card)
+    case 4:
+      {
+        var _player2 = actor[turnSequence.shift()];
+        var _index = turnSequence.shift();
+        var _card2 = deck[_player2][_index];
+        var _data2 = { cardSet: _player2, name: _card2.name, index: _index, blastIndex: turnSequence.shift() };
+        playerDeckCheck = getPlayerHand().length;
+        playCard(_data2);
+        break;
+      }
+    //Action 5: Wipe the field and start fresh
+    case 5:
+      {
+        clearFields();
+        break;
+      }
+    //Action 6: End game
+    case 6:
+      {
+        var winner = void 0;
+        var winnerIndex = turnSequence.shift();
+
+        if (winnerIndex === 0) {
+          winner = "Tie";
+        } else if (winnerIndex === 1) {
+          winner = "player1";
+        } else if (winnerIndex === 2) {
+          winner = "player2";
+        } else {
+          winner = "Unknown";
+        }
+
+        var _update2 = {
+          turnType: "end",
+          winner: winner
+        };
+
+        updateGamestate(_update2);
+        break;
+      }
+    default:
+      {
+        break;
+      }
+  }
+
+  //Wait time between turns
+  turnSequence.shift();
+};
+
 //When a room is selected from the existing rooms list, paste the code into the room join bar
 var onRoomSelect = function onRoomSelect(e) {
   var roomId = document.querySelector("#roomName");
@@ -1901,6 +2211,15 @@ var getTopDeckCard = function getTopDeckCard() {
   }
 };
 
+//Gets the top card from a player's deck
+var getTopDeckCardFrom = function getTopDeckCardFrom(status) {
+  if (status === 'player1') {
+    return deck.p1Deck[deck.p1Deck.length - 1];
+  } else if (status === 'player2') {
+    return deck.p2Deck[deck.p2Deck.length - 1];
+  }
+};
+
 //Gets the players deck
 var getPlayerDeck = function getPlayerDeck() {
   if (playerStatus === 'player1') {
@@ -2010,7 +2329,7 @@ var updateReadyStatus = function updateReadyStatus(status) {
   }
 };
 
-//Sort the player's deck and animate it
+//Sort the player's hand and animate it
 var sortDeck = function sortDeck(data) {
   var playerHand = getPlayerHand();
 
@@ -2021,6 +2340,22 @@ var sortDeck = function sortDeck(data) {
   chainAnimations([[startCardFlip, [playerHand, false]], [flushCards, [playerHand, 770, true, false, true]]], function () {
     for (var i = 0; i < playerHand.length; i++) {
       var card = playerHand[i];
+      card.originalLocation = { x: card.x, y: card.y };
+    }
+  });
+};
+
+//Sort the opponent's hand and animate it
+var sortOpponentDeck = function sortOpponentDeck(data) {
+  var opponentHand = getOpponentHand();
+
+  opponentHand = opponentHand.sort(function (cardA, cardB) {
+    return cardB.sortValue - cardA.sortValue;
+  });
+
+  chainAnimations([[flushCards, [opponentHand, 70, false, false, true]]], function () {
+    for (var i = 0; i < opponentHand.length; i++) {
+      var card = opponentHand[i];
       card.originalLocation = { x: card.x, y: card.y };
     }
   });
@@ -2052,18 +2387,18 @@ var pickFromDeck = function pickFromDeck(data) {
     });
   } else {
     var opponentDeck = getOpponentDeck();
-    var _index = opponentDeck.length - 1;
-    var _card = opponentDeck[_index];
+    var _index2 = opponentDeck.length - 1;
+    var _card3 = opponentDeck[_index2];
 
-    fields[player].push(_card);
-    opponentDeck.splice(_index, 1);
-    _card.reveal(data.card.ref);
+    fields[player].push(_card3);
+    opponentDeck.splice(_index2, 1);
+    _card3.reveal(data.card.ref);
 
-    _card.flipImage();
+    _card3.flipImage();
 
     stackCards(fields[player], false, 500, function () {
       animateDeckWhenReady(fields[player], function () {
-        startCardFlip([_card], false);
+        startCardFlip([_card3], false);
       });
     });
   }
@@ -2089,9 +2424,9 @@ var splicePlayerCard = function splicePlayerCard(cardSet, index) {
 
   flushCards(cardSet, 770, true, false, true, function () {
     for (var _i = 0; _i < cardSet.length; _i++) {
-      var _card2 = cardSet[_i];
-      _card2.x = _card2.originalLocation.x;
-      _card2.y = _card2.originalLocation.y;
+      var _card4 = cardSet[_i];
+      _card4.x = _card4.originalLocation.x;
+      _card4.y = _card4.originalLocation.y;
     }
   });
 };
@@ -2340,15 +2675,15 @@ var clearFields = function clearFields() {
   }
 
   for (var _i2 = 0; _i2 < opponentField.length; _i2++) {
-    var _card3 = opponentField[_i2];
+    var _card5 = opponentField[_i2];
     var _moveAnim = new Animation({
       begin: 0,
       timeToFinish: 600,
-      propsBegin: { x: _card3.x },
+      propsBegin: { x: _card5.x },
       propsEnd: { x: -100 }
     }, true);
 
-    _card3.bindAnimation(_moveAnim, function () {
+    _card5.bindAnimation(_moveAnim, function () {
       animateDeckWhenReady(opponentField, function () {
         gameState.clearFields = false;
         opponentField.splice(0, opponentField.length);
@@ -2464,7 +2799,7 @@ var endCardFlip = function endCardFlip(card, cardCollection, width, xDiff, yDiff
 //Construct an animation to flush a set of cards to look like they belong to a hand
 var flushCards = function flushCards(cardCollection, baseLineY, curveDown, sequentially, reverse, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card4 = cardCollection[i];
+    var _card6 = cardCollection[i];
     var x = 1100 + 100 * (cardCollection.length / 2 - 1 - i);
 
     var middle = Math.floor(cardCollection.length / 2);
@@ -2484,17 +2819,17 @@ var flushCards = function flushCards(cardCollection, baseLineY, curveDown, seque
     var radians = curveDown ? distanceFromMiddle * 0.05 : distanceFromMiddle * -0.05;
 
     //Reset the card location
-    _card4.originalLocation.x = x;
-    _card4.originalLocation.y = y;
+    _card6.originalLocation.x = x;
+    _card6.originalLocation.y = y;
 
     var flushAnim = new Animation({
       begin: sequentially ? (cardCollection.length - 1 - i) * 200 : 0,
       timeToFinish: sequentially ? 600 + (cardCollection.length - 1 - i) * 100 : 600,
-      propsBegin: { x: _card4.x, y: _card4.y, radians: _card4.radians },
+      propsBegin: { x: _card6.x, y: _card6.y, radians: _card6.radians },
       propsEnd: { x: x, y: y, radians: radians }
     }, true);
 
-    _card4.bindAnimation(flushAnim, function () {
+    _card6.bindAnimation(flushAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
@@ -2510,18 +2845,18 @@ var stackCards = function stackCards(cardCollection, expandRight, time, callback
   var baseX = expandRight ? 1080 : 670;
   var baseY = expandRight ? 535 : 300;
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card5 = cardCollection[i];
+    var _card7 = cardCollection[i];
 
     var x = expandRight ? baseX + 40 * i : baseX - 40 * i;
 
     var stackAnim = new Animation({
       begin: 0,
       timeToFinish: time,
-      propsBegin: { x: _card5.x, y: _card5.y, radians: _card5.radians },
+      propsBegin: { x: _card7.x, y: _card7.y, radians: _card7.radians },
       propsEnd: { x: x, y: baseY, radians: expandRight ? 0 : Math.PI }
     }, true);
 
-    _card5.bindAnimation(stackAnim, function () {
+    _card7.bindAnimation(stackAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
@@ -2530,16 +2865,16 @@ var stackCards = function stackCards(cardCollection, expandRight, time, callback
 //Construct an animation fold cards into one pile
 var foldInCards = function foldInCards(cardCollection, x, y, callback) {
   for (var i = 0; i < cardCollection.length; i++) {
-    var _card6 = cardCollection[i];
+    var _card8 = cardCollection[i];
 
     var foldInAnim = new Animation({
       begin: 0,
       timeToFinish: 300,
-      propsBegin: { x: _card6.x, y: _card6.y, radians: _card6.radians },
+      propsBegin: { x: _card8.x, y: _card8.y, radians: _card8.radians },
       propsEnd: { x: x, y: y, radians: 0 }
     }, true);
 
-    _card6.bindAnimation(foldInAnim, function () {
+    _card8.bindAnimation(foldInAnim, function () {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
@@ -2644,6 +2979,8 @@ var handleSuccess = function handleSuccess(message, hide) {
     handleError("", true);
   }
 
+  hideModal();
+
   var msg = message;
 
   if (successMessage === message) {
@@ -2668,6 +3005,8 @@ var handleError = function handleError(message, hide) {
   if (!hide) {
     handleSuccess("", true);
   }
+
+  hideModal();
 
   var msg = message;
 

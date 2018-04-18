@@ -16,7 +16,7 @@ const GameResultSchema = new mongoose.Schema({
   },
   winner: {
     type: String,
-    require: true,
+    required: true,
   },
   player1Score: {
     type: Number,
@@ -29,6 +29,10 @@ const GameResultSchema = new mongoose.Schema({
     set: num => Math.floor(num),
     min: 0,
     max: 1000,
+  },
+  meta: {
+    type: Object,
+    required: true,
   },
   createdDate: {
     type: Date,
@@ -46,6 +50,15 @@ GameResultSchema.statics.findAllGamesFor = (id, callback) => {
   };
 
   GameResultModel.find(search, callback);
+};
+
+// A static function that searches for a GameResult by its id
+GameResultSchema.statics.findById = (id, callback) => {
+  const search = {
+    _id: id,
+  };
+
+  return GameResultModel.findOne(search, callback);
 };
 
 GameResultModel = mongoose.model('GameResult', GameResultSchema);

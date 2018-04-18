@@ -14,6 +14,9 @@ const attach = (app) => {
   // Provide access to psuedo-directory /assets which maps to static assets in /hosted
   app.use('/assets', express.static(path.resolve(`${__dirname}/../hosted/`)));
 
+  // Provide access to /webfonts inside of hosted for fontawesome
+  app.use('/webfonts', express.static(path.resolve(`${__dirname}/../hosted/webfonts/`)));
+
   // Provide a favicon when the browser requests it
   app.use(favicon(`${__dirname}/../hosted/img/favicon.png`));
 

@@ -1,4 +1,4 @@
-#viewport {
+#viewport, #viewportModal {
   display: block;
   margin: auto;
   border: 2px solid black;
@@ -110,4 +110,30 @@ body, html {
 
 .badge {
   vertical-align: top;
+}
+
+.buttonDiv {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.show {
+  display: block;
+}
+
+#pageMask {
+  background-color: black;
+  opacity: 0.5 !important;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+}
+
+.modal-dialog {
+  width: 70%;
+  max-width: 70%;
+  margin: auto;
 }

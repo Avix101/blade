@@ -39,6 +39,7 @@ const renderRightPanel = () => {
 
 //Render the main game
 const renderGame = (width, height) => {
+  
   ReactDOM.render(
     <GameWindow width={width} height={height} />,
     document.querySelector("#main")
@@ -85,6 +86,32 @@ const handlePasswordChange = (e) => {
   });
 	
 	return false;
+};
+
+//Process a request to hide a modal
+const hideModal = () => {
+  const modal = document.querySelector("#modalContainer div");
+  
+  if(!modal){
+    return;
+  }
+  
+  modal.classList.remove("show");
+  modal.classList.add("hide");
+  
+  endGame();
+  deck = {};
+  fields = {
+  'player1': [],
+  'player2': [],
+  };
+  turnSequence = [];
+  gameState.turnType = "begin";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
 };
 
 //Handle a request to submit feedback
@@ -441,6 +468,12 @@ const GameHistory = (props) => {
           <p>{opponentProfile.username}'s Score: {opponentScore}</p>
           <p>Date of Game: {date.toDateString()}</p>
         </div>
+        <div className="buttonDiv">
+          <span data-id={game.id}></span>
+          <button className="btn btn-lg btn-primary" onClick={requestPlaybackData}>
+            Watch Replay <span className="fas fa-play"></span>
+          </button>
+        </div>
       </li>
     );
   });
@@ -495,6 +528,75 @@ const GameHistory = (props) => {
       </div>
     </div>
   );
+}
+
+//Build a pop-out modal window to display to the user
+const SiteModal = (props) => {
+  const id = "playbackModal";
+  
+  let modalBody;
+  
+  if(props.render){
+    const dimensions = calcDisplayDimensions();
+    modalBody = <canvas id="viewportModal" width={dimensions.width} height={dimensions.height}></canvas>;
+  } else {
+    modalBody = <p>Loading playback data... <span className="fas fa-sync fa-spin"></span></p>;
+  }
+  
+  return (
+    <div id={id} className="modal show" tabindex="-1" role="dialog">
+      <div id="pageMask"></div>
+      <div className="modal-dialog" role="document">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h1 className="modal-title">Game Playback</h1>
+            <button className="close" data-dismiss="modal" aria-label="Close" onClick={hideModal}>
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div className="modal-body">
+            {modalBody}
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-lg btn-primary" data-dismiss="modal" onClick={hideModal}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+//Request playback data from the server
+const requestPlaybackData = (e) => {
+  const id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
+  
+  setTimeout(() => {
+    socket.emit('requestPlaybackData', { id });
+  }, 5000);
+  
+  renderPlayback(false);
+}
+
+//Handle an error sent from the server
+const processError = (data) => {
+  handleError(data.error, false);
+}
+
+//Render the site's dialog box / modal (playback mode)
+const renderPlayback = (renderDisplay) => {
+  ReactDOM.render(
+    <SiteModal render={renderDisplay} />,
+    document.querySelector("#modalContainer")
+  );
+  
+  const modal = document.querySelector("#modalContainer div");
+  
+  if(!modal){
+    return;
+  }
+  
+  modal.classList.remove("hide");
+  modal.classList.add("show");
 }
 
 //Render the left panel as empty

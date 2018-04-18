@@ -118,6 +118,7 @@ const getGameHistory = (req, res) => {
         const playerIdentity = id.toString() === game.player1Id.toString() ? 'player1' : 'player2';
 
         const gameData = {
+          id: game._id,
           winner: game.winner,
           player1: accounts[game.player1Id],
           player2: accounts[game.player2Id],

@@ -54,6 +54,8 @@ const handleSuccess = (message, hide) => {
     handleError("", true);
   }
   
+  hideModal();
+  
   let msg = message;
   
   if(successMessage === message){
@@ -81,6 +83,8 @@ const handleError = (message, hide) => {
   if(!hide){
     handleSuccess("", true);
   }
+  
+  hideModal();
   
   let msg = message;
   
