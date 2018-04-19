@@ -8,6 +8,7 @@ const roomHandler = require('./roomHandler.js');
 const models = require('./models');
 
 const { GameResult } = models;
+const { Account } = models;
 
 let io;
 
@@ -267,15 +268,41 @@ const init = (ioInstance) => {
 
         const { meta } = game;
 
-        // Playback data successfully retrieved, format and send back to requester
-        socket.emit('playbackData', {
-          game: {
-            p1Hand: blade.buildCardSet(meta.p1Hand),
-            p2Hand: blade.buildCardSet(meta.p2Hand),
-            p1Deck: blade.buildCardSet(meta.p1Deck),
-            p2Deck: blade.buildCardSet(meta.p2Deck),
-            gameplay: meta.gameplay,
-          },
+        // Find the accounts of the game's players
+        Account.AccountModel.findByIdMultiple([game.player1Id, game.player2Id], (er2, accounts) => {
+          // If account data can't be found, terminate the request
+          if (er2 || !accounts || accounts.length !== 2) {
+            socket.emit('errorMessage', {
+              error: 'Participating accounts could not be retrieved, playback canceled',
+            });
+            return;
+          }
+
+          const accountData = accounts.map(account => ({
+            username: account.username,
+            profile: account.profile_name,
+          }));
+
+          const playerData = {
+            player1: game.player1Id.toString() === accounts[0]._id.toString() ?
+              accountData[0] :
+              accountData[1],
+            player2: game.player2Id.toString() === accounts[0]._id.toString() ?
+              accountData[0] :
+              accountData[1],
+          };
+
+          // Playback data successfully retrieved, format and send back to requester
+          socket.emit('playbackData', {
+            game: {
+              p1Hand: blade.buildCardSet(meta.p1Hand),
+              p2Hand: blade.buildCardSet(meta.p2Hand),
+              p1Deck: blade.buildCardSet(meta.p1Deck),
+              p2Deck: blade.buildCardSet(meta.p2Deck),
+              gameplay: meta.gameplay,
+            },
+            playerData,
+          });
         });
       });
     });

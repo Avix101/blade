@@ -2,8 +2,14 @@
 const update = () => {
   
   //Execute playback if enabled
-  if(isPlayingBack && readyToPlay){
-    executePlayback();
+  if(isPlayingBack){
+    
+    //Render the animated progress bar
+    renderPlaybackOptions();
+    
+    if(readyToPlay){
+      executePlayback();
+    }
   }
   
   //Check for card collisions with the mouse depending on the current state
@@ -230,9 +236,29 @@ const processPlaybackData = (data) => {
   renderPlayback(true);
   viewport = document.querySelector("#viewportModal");
   viewCtx = viewport.getContext('2d');
-  roomJoined({status: "player1"});
+  
+  loadPlayerProfiles(data.playerData);
+  
+  playbackData = data;
+};
+
+//Commense playback
+const startPlayback = () => {
+  const data = playbackData;
+  const perspectiveSelect = document.querySelector("#perspectiveSelect");
+  const perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
   
   const game = data.game;
+  
+  //Record the total number of actions taken during playback
+  playbackSequenceCount = game.gameplay.length;
+  
+  //Save loaded player profiles for use after "joining the room"
+  const tempProfiles = playerProfiles;
+  
+  roomJoined({status: perspective});
+  
+  playerProfiles = tempProfiles;
   
   setDeck({
     player1: game.p1Hand,
@@ -246,9 +272,18 @@ const processPlaybackData = (data) => {
   console.log(turnSequence);
 };
 
+//Allow the user to bypass realistic wait times for executing playback
+const changeBypassWait = (e) => {
+	bypassWait = e.target.checked;
+	renderPlaybackOptions();
+};
+
 //Executes the next move in the playback sequence
 let playerDeckCheck;
 let opponentDeckCheck;
+let waiting = false;
+let waitTime = 0;
+let bypassWait = false;
 const executePlayback = () => {
   
   //If there are no more turns to process, stop playing back
@@ -274,9 +309,13 @@ const executePlayback = () => {
     }
   }
   
+  //Check to see if the client wants to wait for accurate timing, and then postpone updates if necessary
+  if(waiting){
+    return;
+  }
+  
   //Grab the next turn
   const turnFlag = turnSequence.shift();
-  console.log(turnFlag);
   
   //A struct to determine the required actor
   const actor = {
@@ -284,12 +323,16 @@ const executePlayback = () => {
     1: "player2",
   }
   
+  let action = NULL_FUNC;
+  
   //Depending on the first flag, play an action
   switch(turnFlag){
     //Action 0: sort the deck
     case 0: {
-      sortDeck();
-      sortOpponentDeck();
+      action = () => {
+        sortDeck();
+        sortOpponentDeck();
+      };
       break;
     }
     //Action 1: pick from a player's deck
@@ -298,7 +341,9 @@ const executePlayback = () => {
       const card = getTopDeckCardFrom(player);
       card.ref = card.name;
       const data = {player, card};
-      pickFromDeck(data);
+      action = () => {  
+        pickFromDeck(data);
+      };
       break;
     }
     //Action 2: Update the gamestate (player points in this case)
@@ -307,7 +352,9 @@ const executePlayback = () => {
         player1Points: turnSequence.shift(),
         player2Points: turnSequence.shift(),
       };
-      updateGamestate(update);
+      action = () => {
+        updateGamestate(update);
+      };
       break;
     }
     //Action 3: Play any card from a player's hand aside from a blast
@@ -327,7 +374,9 @@ const executePlayback = () => {
         }
       }
       
-      playCard(data);
+      action = () => {
+        playCard(data);
+      };
       break;
     }
     //Action 4: Play a blast from a player's hand (and target opponent's card)
@@ -337,12 +386,17 @@ const executePlayback = () => {
       const card = deck[player][index];
       const data = {cardSet: player, name: card.name, index, blastIndex: turnSequence.shift()};
       playerDeckCheck = getPlayerHand().length;
-      playCard(data);
+	  
+	  action = () => {
+		playCard(data);
+	  };
       break;
     }
     //Action 5: Wipe the field and start fresh
     case 5: {
-      clearFields();
+      action = () => {
+		clearFields();
+	  };
       break;
     }
     //Action 6: End game
@@ -365,7 +419,9 @@ const executePlayback = () => {
         winner,
       };
       
-      updateGamestate(update);
+      action = () => {
+        updateGamestate(update);
+      }
       break;
     }
     default: {
@@ -374,7 +430,22 @@ const executePlayback = () => {
   }
   
   //Wait time between turns
-  turnSequence.shift();
+  waitTime = turnSequence.shift();
+  waiting = true;
+  
+  if(bypassWait){
+    waitTime = 0;
+  }
+  
+  setTimeout(() => {
+    action();
+    //Allow the action to commence before setting waiting to false
+    setTimeout(() => {
+      waiting = false;
+    }, 100);
+  }, waitTime);
+  
+  
 };
 
 //When a room is selected from the existing rooms list, paste the code into the room join bar
@@ -398,7 +469,10 @@ const joinRoom = (e) => {
 const roomJoined = (data) => {
   playerStatus = data.status;
   inRoom = true;
-  addToChat(`You have joined room: ${data.room}`);
+  
+  if(data.room){
+    addToChat(`You have joined room: ${data.room}`);
+  }
   
   const subDeckKeys = Object.keys(deck);
   for(let i = 0; i < subDeckKeys.length; i++){
@@ -434,6 +508,7 @@ const loadPlayerProfiles = (data) => {
           charImage: image,
           username: data.player1.username,
         }
+        renderPlaybackOptions();
       };
       
       image.src = profileData.imageFile;
@@ -448,6 +523,7 @@ const loadPlayerProfiles = (data) => {
           charImage: image,
           username: data.player2.username,
         }
+        renderPlaybackOptions();
       };
       
       image.src = profileData.imageFile;

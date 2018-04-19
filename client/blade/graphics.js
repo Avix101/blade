@@ -268,7 +268,9 @@ const draw = () => {
   updateReadyStatus(readyStatus);
   
   //Draw instructions or a screen overlay depending on the gamestate
-  if(!inRoom && gameState.turnType !== "end"){
+  if(playbackData && !isPlayingBack && gameState.turnType !== "end"){
+    drawWaitingOverlay("Press Start to Begin Playback");
+  } else if(!inRoom && gameState.turnType !== "end"){
     drawWaitingOverlay("Please create or join a game...");
   } else {
     drawScore(getPlayerPoints(), getOpponentPoints());

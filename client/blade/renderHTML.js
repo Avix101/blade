@@ -96,8 +96,8 @@ const hideModal = () => {
     return;
   }
   
-  modal.classList.remove("show");
-  modal.classList.add("hide");
+  //modal.classList.remove("show");
+  modal.classList.add("hide-anim");
   
   endGame();
   deck = {};
@@ -105,6 +105,10 @@ const hideModal = () => {
   'player1': [],
   'player2': [],
   };
+  playbackData = null;
+  isPlayingBack = false;
+  playerProfiles = {};
+  playerStatus = null;
   turnSequence = [];
   gameState.turnType = "begin";
   gameState.turnOwner = null;
@@ -538,7 +542,18 @@ const SiteModal = (props) => {
   
   if(props.render){
     const dimensions = calcDisplayDimensions();
-    modalBody = <canvas id="viewportModal" width={dimensions.width} height={dimensions.height}></canvas>;
+    const ratio = Math.min(window.innerHeight * 0.5 / dimensions.height, 1);
+    dimensions.width *= ratio;
+    dimensions.height *= ratio;
+    modalBody = (
+	  <div>
+	    <canvas id="viewportModal" className="animateExpand" width={dimensions.width} height={dimensions.height}></canvas>
+	    <hr />
+      <div id="playbackOptions">
+        <PlaybackOptions />
+	    </div>
+	  </div>
+	);
   } else {
     modalBody = <p>Loading playback data... <span className="fas fa-sync fa-spin"></span></p>;
   }
@@ -566,13 +581,89 @@ const SiteModal = (props) => {
   );
 }
 
+const PlaybackOptions = (props) => {
+	
+  let player1Name;
+  let player2Name;
+  if(playerProfiles["player1"] && playerProfiles["player2"]){
+    player1Name = playerProfiles['player1'].username;
+    player2Name = playerProfiles['player2'].username;
+  } else {
+    player1Name = "Player 1";
+    player2Name = "Player 2";
+  }
+  
+  if(!isPlayingBack){
+    return (
+      <div className="container text-center">
+        <div className="row row-centered">
+          <div className="form-group col-sm-6 mx-auto">
+            <div className="custom-control custom-checkbox">
+              <input type="checkbox" id="bypassWaitCheck" className="custom-control-input" checked={bypassWait} onChange={changeBypassWait}/>
+              <label className="custom-control-label" htmlFor="bypassWaitCheck">Quick Play (Bypass accurate player wait times)</label>
+            </div>
+          </div>
+        </div>
+        <div className="row row-centered">
+          <div className="form-group col-sm-6 mx-auto">
+            <label classNam="custom-control-label" htmlFor="perspectiveSelect">Perspective: </label>
+            <select id="perspectiveSelect" className="custom-select">
+              <option value="player1" selected> {player1Name}'s </option>
+              <option value="player2"> {player2Name}'s </option>
+            </select>
+          </div>
+        </div>
+        <div className="row row-centered">
+          <div className="form-group col-sm-6 mx-auto">
+            <button className="btn btn-lg btn-success" onClick={startPlayback}>Start Playback</button>
+          </div>
+        </div>
+      </div>
+    );
+  } else {
+    const progressWidth = {width: `${(props.progress / props.total) * 100}%`};
+    return (
+      <div>
+        <p className="lead aboutPara">Playback Progress:</p>
+        <div className="progress">
+          <div className="progress-bar progress-bar-striped progress-bar-animated bg-info"
+            role="progressbar" 
+            aria-value={props.progress}
+            aria-valuemin="0"
+            aria-valuemax={props.total}
+            style={progressWidth}
+          ></div>
+        </div>
+      </div>
+    );
+  }
+};
+
+//Render the bypass wait control
+const renderPlaybackOptions = () => {
+	
+  const modal = document.querySelector("#modalContainer div");
+  
+  if(!modal){
+    return;
+  }
+  
+  ReactDOM.render(
+		<PlaybackOptions 
+      progress={playbackSequenceCount - turnSequence.length}
+      total={playbackSequenceCount}
+    />,
+		document.querySelector("#playbackOptions")
+	);
+};
+
 //Request playback data from the server
 const requestPlaybackData = (e) => {
   const id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
   
   setTimeout(() => {
-    socket.emit('requestPlaybackData', { id });
-  }, 5000);
+	socket.emit('requestPlaybackData', { id });
+  }, 1000);
   
   renderPlayback(false);
 }
@@ -595,7 +686,7 @@ const renderPlayback = (renderDisplay) => {
     return;
   }
   
-  modal.classList.remove("hide");
+  modal.classList.remove("hide-anim");
   modal.classList.add("show");
 }
 

@@ -27,6 +27,8 @@ const gameState = {
 
 //Variables for managing playback
 let isPlayingBack = false;
+let playbackData;
+let playbackSequenceCount;
 let turnSequence = [];
 
 let fields = {
@@ -56,7 +58,6 @@ const resizeGame = (e) => {
     const dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
   } else if(viewport && document.querySelector("#modalContainer div").classList.contains("show")){
-    const dimensions = calcDisplayDimensions();
     renderPlayback(true);
   }
 }

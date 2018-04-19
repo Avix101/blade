@@ -477,7 +477,9 @@ var draw = function draw() {
   updateReadyStatus(readyStatus);
 
   //Draw instructions or a screen overlay depending on the gamestate
-  if (!inRoom && gameState.turnType !== "end") {
+  if (playbackData && !isPlayingBack && gameState.turnType !== "end") {
+    drawWaitingOverlay("Press Start to Begin Playback");
+  } else if (!inRoom && gameState.turnType !== "end") {
     drawWaitingOverlay("Please create or join a game...");
   } else {
     drawScore(getPlayerPoints(), getOpponentPoints());
@@ -531,6 +533,8 @@ var gameState = {
 
 //Variables for managing playback
 var isPlayingBack = false;
+var playbackData = void 0;
+var playbackSequenceCount = void 0;
 var turnSequence = [];
 
 var fields = {
@@ -560,7 +564,6 @@ var resizeGame = function resizeGame(e) {
     var dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
   } else if (viewport && document.querySelector("#modalContainer div").classList.contains("show")) {
-    var _dimensions = calcDisplayDimensions();
     renderPlayback(true);
   }
 };
@@ -604,8 +607,8 @@ var loadView = function loadView() {
       }
     default:
       {
-        var _dimensions2 = calcDisplayDimensions();
-        renderGame(_dimensions2.width, _dimensions2.height);
+        var _dimensions = calcDisplayDimensions();
+        renderGame(_dimensions.width, _dimensions.height);
         pageView = "#blade";
         break;
       }
@@ -763,8 +766,8 @@ var hideModal = function hideModal() {
     return;
   }
 
-  modal.classList.remove("show");
-  modal.classList.add("hide");
+  //modal.classList.remove("show");
+  modal.classList.add("hide-anim");
 
   endGame();
   deck = {};
@@ -772,6 +775,10 @@ var hideModal = function hideModal() {
     'player1': [],
     'player2': []
   };
+  playbackData = null;
+  isPlayingBack = false;
+  playerProfiles = {};
+  playerStatus = null;
   turnSequence = [];
   gameState.turnType = "begin";
   gameState.turnOwner = null;
@@ -1526,7 +1533,20 @@ var SiteModal = function SiteModal(props) {
 
   if (props.render) {
     var dimensions = calcDisplayDimensions();
-    modalBody = React.createElement("canvas", { id: "viewportModal", width: dimensions.width, height: dimensions.height });
+    var ratio = Math.min(window.innerHeight * 0.5 / dimensions.height, 1);
+    dimensions.width *= ratio;
+    dimensions.height *= ratio;
+    modalBody = React.createElement(
+      "div",
+      null,
+      React.createElement("canvas", { id: "viewportModal", className: "animateExpand", width: dimensions.width, height: dimensions.height }),
+      React.createElement("hr", null),
+      React.createElement(
+        "div",
+        { id: "playbackOptions" },
+        React.createElement(PlaybackOptions, null)
+      )
+    );
   } else {
     modalBody = React.createElement(
       "p",
@@ -1583,13 +1603,132 @@ var SiteModal = function SiteModal(props) {
   );
 };
 
+var PlaybackOptions = function PlaybackOptions(props) {
+
+  var player1Name = void 0;
+  var player2Name = void 0;
+  if (playerProfiles["player1"] && playerProfiles["player2"]) {
+    player1Name = playerProfiles['player1'].username;
+    player2Name = playerProfiles['player2'].username;
+  } else {
+    player1Name = "Player 1";
+    player2Name = "Player 2";
+  }
+
+  if (!isPlayingBack) {
+    return React.createElement(
+      "div",
+      { className: "container text-center" },
+      React.createElement(
+        "div",
+        { className: "row row-centered" },
+        React.createElement(
+          "div",
+          { className: "form-group col-sm-6 mx-auto" },
+          React.createElement(
+            "div",
+            { className: "custom-control custom-checkbox" },
+            React.createElement("input", { type: "checkbox", id: "bypassWaitCheck", className: "custom-control-input", checked: bypassWait, onChange: changeBypassWait }),
+            React.createElement(
+              "label",
+              { className: "custom-control-label", htmlFor: "bypassWaitCheck" },
+              "Quick Play (Bypass accurate player wait times)"
+            )
+          )
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "row row-centered" },
+        React.createElement(
+          "div",
+          { className: "form-group col-sm-6 mx-auto" },
+          React.createElement(
+            "label",
+            { classNam: "custom-control-label", htmlFor: "perspectiveSelect" },
+            "Perspective: "
+          ),
+          React.createElement(
+            "select",
+            { id: "perspectiveSelect", className: "custom-select" },
+            React.createElement(
+              "option",
+              { value: "player1", selected: true },
+              " ",
+              player1Name,
+              "'s "
+            ),
+            React.createElement(
+              "option",
+              { value: "player2" },
+              " ",
+              player2Name,
+              "'s "
+            )
+          )
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "row row-centered" },
+        React.createElement(
+          "div",
+          { className: "form-group col-sm-6 mx-auto" },
+          React.createElement(
+            "button",
+            { className: "btn btn-lg btn-success", onClick: startPlayback },
+            "Start Playback"
+          )
+        )
+      )
+    );
+  } else {
+    var progressWidth = { width: props.progress / props.total * 100 + "%" };
+    return React.createElement(
+      "div",
+      null,
+      React.createElement(
+        "p",
+        { className: "lead aboutPara" },
+        "Playback Progress:"
+      ),
+      React.createElement(
+        "div",
+        { className: "progress" },
+        React.createElement("div", { className: "progress-bar progress-bar-striped progress-bar-animated bg-info",
+          role: "progressbar",
+          "aria-value": props.progress,
+          "aria-valuemin": "0",
+          "aria-valuemax": props.total,
+          style: progressWidth
+        })
+      )
+    );
+  }
+};
+
+//Render the bypass wait control
+var renderPlaybackOptions = function renderPlaybackOptions() {
+
+  var modal = document.querySelector("#modalContainer div");
+
+  if (!modal) {
+    return;
+  }
+
+  ReactDOM.render(React.createElement(PlaybackOptions, {
+    progress: playbackSequenceCount - turnSequence.length,
+    total: playbackSequenceCount
+  }), document.querySelector("#playbackOptions"));
+};
+
 //Request playback data from the server
 var requestPlaybackData = function requestPlaybackData(e) {
   var id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
 
   setTimeout(function () {
     socket.emit('requestPlaybackData', { id: id });
-  }, 5000);
+  }, 1000);
 
   renderPlayback(false);
 };
@@ -1609,7 +1748,7 @@ var renderPlayback = function renderPlayback(renderDisplay) {
     return;
   }
 
-  modal.classList.remove("hide");
+  modal.classList.remove("hide-anim");
   modal.classList.add("show");
 };
 
@@ -1678,8 +1817,14 @@ var renderRoomSelection = function renderRoomSelection(rooms, renderEmpty) {
 var update = function update() {
 
   //Execute playback if enabled
-  if (isPlayingBack && readyToPlay) {
-    executePlayback();
+  if (isPlayingBack) {
+
+    //Render the animated progress bar
+    renderPlaybackOptions();
+
+    if (readyToPlay) {
+      executePlayback();
+    }
   }
 
   //Check for card collisions with the mouse depending on the current state
@@ -1918,9 +2063,29 @@ var processPlaybackData = function processPlaybackData(data) {
   renderPlayback(true);
   viewport = document.querySelector("#viewportModal");
   viewCtx = viewport.getContext('2d');
-  roomJoined({ status: "player1" });
+
+  loadPlayerProfiles(data.playerData);
+
+  playbackData = data;
+};
+
+//Commense playback
+var startPlayback = function startPlayback() {
+  var data = playbackData;
+  var perspectiveSelect = document.querySelector("#perspectiveSelect");
+  var perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
 
   var game = data.game;
+
+  //Record the total number of actions taken during playback
+  playbackSequenceCount = game.gameplay.length;
+
+  //Save loaded player profiles for use after "joining the room"
+  var tempProfiles = playerProfiles;
+
+  roomJoined({ status: perspective });
+
+  playerProfiles = tempProfiles;
 
   setDeck({
     player1: game.p1Hand,
@@ -1934,9 +2099,18 @@ var processPlaybackData = function processPlaybackData(data) {
   console.log(turnSequence);
 };
 
+//Allow the user to bypass realistic wait times for executing playback
+var changeBypassWait = function changeBypassWait(e) {
+  bypassWait = e.target.checked;
+  renderPlaybackOptions();
+};
+
 //Executes the next move in the playback sequence
 var playerDeckCheck = void 0;
 var opponentDeckCheck = void 0;
+var waiting = false;
+var waitTime = 0;
+var bypassWait = false;
 var executePlayback = function executePlayback() {
 
   //If there are no more turns to process, stop playing back
@@ -1962,22 +2136,31 @@ var executePlayback = function executePlayback() {
     }
   }
 
+  //Check to see if the client wants to wait for accurate timing, and then postpone updates if necessary
+  if (waiting) {
+    return;
+  }
+
   //Grab the next turn
   var turnFlag = turnSequence.shift();
-  console.log(turnFlag);
 
   //A struct to determine the required actor
   var actor = {
     0: "player1",
     1: "player2"
+  };
 
-    //Depending on the first flag, play an action
-  };switch (turnFlag) {
+  var action = NULL_FUNC;
+
+  //Depending on the first flag, play an action
+  switch (turnFlag) {
     //Action 0: sort the deck
     case 0:
       {
-        sortDeck();
-        sortOpponentDeck();
+        action = function action() {
+          sortDeck();
+          sortOpponentDeck();
+        };
         break;
       }
     //Action 1: pick from a player's deck
@@ -1987,7 +2170,9 @@ var executePlayback = function executePlayback() {
         var card = getTopDeckCardFrom(player);
         card.ref = card.name;
         var data = { player: player, card: card };
-        pickFromDeck(data);
+        action = function action() {
+          pickFromDeck(data);
+        };
         break;
       }
     //Action 2: Update the gamestate (player points in this case)
@@ -1997,7 +2182,9 @@ var executePlayback = function executePlayback() {
           player1Points: turnSequence.shift(),
           player2Points: turnSequence.shift()
         };
-        updateGamestate(_update);
+        action = function action() {
+          updateGamestate(_update);
+        };
         break;
       }
     //Action 3: Play any card from a player's hand aside from a blast
@@ -2018,7 +2205,9 @@ var executePlayback = function executePlayback() {
           }
         }
 
-        playCard(_data);
+        action = function action() {
+          playCard(_data);
+        };
         break;
       }
     //Action 4: Play a blast from a player's hand (and target opponent's card)
@@ -2029,13 +2218,18 @@ var executePlayback = function executePlayback() {
         var _card2 = deck[_player2][_index];
         var _data2 = { cardSet: _player2, name: _card2.name, index: _index, blastIndex: turnSequence.shift() };
         playerDeckCheck = getPlayerHand().length;
-        playCard(_data2);
+
+        action = function action() {
+          playCard(_data2);
+        };
         break;
       }
     //Action 5: Wipe the field and start fresh
     case 5:
       {
-        clearFields();
+        action = function action() {
+          clearFields();
+        };
         break;
       }
     //Action 6: End game
@@ -2059,7 +2253,9 @@ var executePlayback = function executePlayback() {
           winner: winner
         };
 
-        updateGamestate(_update2);
+        action = function action() {
+          updateGamestate(_update2);
+        };
         break;
       }
     default:
@@ -2069,7 +2265,20 @@ var executePlayback = function executePlayback() {
   }
 
   //Wait time between turns
-  turnSequence.shift();
+  waitTime = turnSequence.shift();
+  waiting = true;
+
+  if (bypassWait) {
+    waitTime = 0;
+  }
+
+  setTimeout(function () {
+    action();
+    //Allow the action to commence before setting waiting to false
+    setTimeout(function () {
+      waiting = false;
+    }, 100);
+  }, waitTime);
 };
 
 //When a room is selected from the existing rooms list, paste the code into the room join bar
@@ -2093,7 +2302,10 @@ var joinRoom = function joinRoom(e) {
 var roomJoined = function roomJoined(data) {
   playerStatus = data.status;
   inRoom = true;
-  addToChat("You have joined room: " + data.room);
+
+  if (data.room) {
+    addToChat("You have joined room: " + data.room);
+  }
 
   var subDeckKeys = Object.keys(deck);
   for (var i = 0; i < subDeckKeys.length; i++) {
@@ -2129,6 +2341,7 @@ var loadPlayerProfiles = function loadPlayerProfiles(data) {
           charImage: image,
           username: data.player1.username
         };
+        renderPlaybackOptions();
       };
 
       image.src = profileData.imageFile;
@@ -2143,6 +2356,7 @@ var loadPlayerProfiles = function loadPlayerProfiles(data) {
           charImage: image,
           username: data.player2.username
         };
+        renderPlaybackOptions();
       };
 
       image.src = profileData.imageFile;

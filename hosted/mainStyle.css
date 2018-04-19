@@ -137,3 +137,35 @@ body, html {
   max-width: 70%;
   margin: auto;
 }
+
+#playbackModal, #viewportModal {
+	animation-duration: 0.3s;
+	animation-fill-mode: forwards;
+}
+
+.show {
+  animation-name: slide-outwards;
+}
+
+.animateExpand {
+  animation-name: expand-down;
+}
+
+.hide-anim {
+  animation-name: slide-inwards;
+}
+
+@keyframes slide-outwards {
+	0% { opacity: 0; transform: scale3d(0, 1, 1);}
+	100% { opacity: 1; transform: scale3d(1, 1, 1);}
+}
+
+@keyframes slide-inwards {
+	0% { opacity: 1; transform: scale3d(1, 1, 1);}
+	100% { opacity: 0; transform: scale3d(0, 1, 1);}
+}
+
+@keyframes expand-down {
+  0% { opacity: 0; transform: scale3d(1, 0, 1);}
+	100% { opacity: 1; transform: scale3d(1, 1, 1);}
+}
