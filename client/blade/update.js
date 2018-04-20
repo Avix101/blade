@@ -419,10 +419,13 @@ const executePlayback = () => {
         winner,
       };
       
-      action = () => {
-        updateGamestate(update);
-      }
-      break;
+      //No point in waiting for turn length here
+      updateGamestate(update);
+      
+      //Terminate the remaining turn sequence information
+      turnSequence = [];
+      
+      return;
     }
     default: {
       break;

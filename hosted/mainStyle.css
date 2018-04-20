@@ -80,16 +80,16 @@ body, html {
   margin-top: 10px;
 }
 
-.gameHistory {
+.gameHistory, .publicGameItem {
   width: 50%;
   height: 100%;
 }
 
-.gameHistory figure {
+.gameHistory figure, .publicGameItem figure {
   display: inline-block;
 }
 
-.gameHistory figcaption {
+.gameHistory figcaption, .publicGameItem figcaption {
   text-align: center;
 }
 
@@ -113,6 +113,12 @@ body, html {
 }
 
 .buttonDiv {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vertical-align {
   display: flex;
   justify-content: center;
   align-items: center;

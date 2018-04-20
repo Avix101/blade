@@ -271,7 +271,15 @@ const init = (ioInstance) => {
         // Find the accounts of the game's players
         Account.AccountModel.findByIdMultiple([game.player1Id, game.player2Id], (er2, accounts) => {
           // If account data can't be found, terminate the request
-          if (er2 || !accounts || accounts.length !== 2) {
+          if (er2 || !accounts) {
+            socket.emit('errorMessage', {
+              error: 'Participating accounts could not be retrieved, playback canceled',
+            });
+            return;
+          }
+
+          // Only allow the return of a single account if the player played against themself
+          if (accounts.length !== 2 && !(game.player1Id.toString() === game.player2Id.toString())) {
             socket.emit('errorMessage', {
               error: 'Participating accounts could not be retrieved, playback canceled',
             });

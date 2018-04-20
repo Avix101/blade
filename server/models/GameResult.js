@@ -52,6 +52,27 @@ GameResultSchema.statics.findAllGamesFor = (id, callback) => {
   GameResultModel.find(search, callback);
 };
 
+// A static function that searches for a given number of games that fit the search criteria
+GameResultSchema.statics.searchForGames = (id, startDate, endDate, limit, callback) => {
+  const search = {};
+
+  if (id) {
+    search.$or = [
+      { player1Id: id },
+      { player2Id: id },
+    ];
+  }
+
+  if (startDate && endDate) {
+    search.createdDate = {
+      $gte: startDate.toISOString(),
+      $lte: endDate.toISOString(),
+    };
+  }
+
+  GameResultModel.find(search, callback).sort({ createdDate: -1 }).limit(limit);
+};
+
 // A static function that searches for a GameResult by its id
 GameResultSchema.statics.findById = (id, callback) => {
   const search = {

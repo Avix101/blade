@@ -30,6 +30,7 @@ const attach = (app) => {
   app.get('/getProfile', mid.requiresLogin, controllers.Blade.getProfile);
   app.get('/getProfiles', mid.requiresSecure, mid.requiresLogout, controllers.Blade.getAllProfilePics);
   app.get('/getGameHistory', mid.requiresLogin, controllers.Blade.getGameHistory);
+  app.get('/getPublicGames', mid.requiresLogin, controllers.Blade.getPublicGames);
   app.get('/logout', mid.requiresLogin, controllers.Account.logout);
   app.get('/blade', mid.requiresLogin, controllers.Blade.main);
   app.get('/', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);

@@ -81,7 +81,12 @@ const getGameHistory = (req, res) => {
 
   return GameResult.GameResultModel.findAllGamesFor(id, (err, games) => {
     if (err) {
-      res.status(500).json({ error: 'Game history could not be retrieved.' });
+      return res.status(500).json({ error: 'Game history could not be retrieved' });
+    }
+
+    // If no games are returned, just send an empty array
+    if (!games) {
+      return res.status(200).json({ data: [] });
     }
 
     const accounts = {};
@@ -102,7 +107,7 @@ const getGameHistory = (req, res) => {
     // Find all relevant account ids
     return Account.AccountModel.findByIdMultiple(accountIds, (err2, results) => {
       if (err2) {
-        res.status(500).json({ error: 'Game history could not be retrieved.' });
+        return res.status(500).json({ error: 'Game history could not be retrieved' });
       }
 
       for (let i = 0; i < results.length; i++) {
@@ -131,8 +136,113 @@ const getGameHistory = (req, res) => {
         data.push(gameData);
       }
 
-      res.status(200).json({ data });
+      return res.status(200).json({ data });
     });
+  });
+};
+
+const getPublicGames = (request, response) => {
+  const req = request;
+  const res = response;
+
+  req.query.username = `${req.query.username}`;
+  req.query.startDate = `${req.query.startDate}`;
+  req.query.endDate = `${req.query.endDate}`;
+  req.query.limit = `${req.query.limit}`;
+
+  // Retrieve the requested account (if it exists)
+  return Account.AccountModel.findByUsername(req.query.username, (err, account) => {
+    if (err) {
+      return res.status(500).json({ error: 'Public Account info could not be retrieved' });
+    }
+
+    // If the user is searching for an account and it wasn't found, send an error
+    if (req.query.username !== '' && !account) {
+      return res.status(400).json({ error: 'User account not found' });
+    }
+
+    // Construct and verify search data
+    let startDate = new Date(req.query.startDate);
+    if (startDate.toString() === 'Invalid Date') {
+      startDate = new Date('2018-04-13');
+    }
+    let endDate = new Date(req.query.endDate);
+    if (endDate.toString() === 'Invalid Date') {
+      endDate = null;
+    }
+
+    let limit = parseInt(req.query.limit, 10);
+    let userId;
+
+    if (account) {
+      userId = account._id;
+    }
+
+    if (Number.isNaN(limit)) {
+      limit = 0;
+    }
+
+    return GameResult.GameResultModel.searchForGames(
+      userId, startDate, endDate, limit,
+      (er2, games) => {
+        if (er2) {
+          return res.status(500).json({ error: 'Public game data could not be retrieved' });
+        }
+
+        // If no games are returned, just send an empty array
+        if (!games) {
+          return res.status(200).json({ data: [] });
+        }
+
+        const accounts = {};
+        const accountIds = [];
+
+        // Determine relevant accounts (all accounts included in public games)
+        for (let i = 0; i < games.length; i++) {
+          const game = games[i];
+          if (!accounts[game.player1Id]) {
+            accounts[game.player1Id] = {};
+            accountIds.push(mongoose.Types.ObjectId(game.player1Id));
+          }
+          if (!accounts[game.player2Id]) {
+            accounts[game.player2Id] = {};
+            accountIds.push(mongoose.Types.ObjectId(game.player2Id));
+          }
+        }
+
+        // Find all relevant account ids
+        return Account.AccountModel.findByIdMultiple(accountIds, (er3, results) => {
+          if (er3) {
+            return res.status(500).json({ error: 'Game history could not be retrieved' });
+          }
+
+          for (let i = 0; i < results.length; i++) {
+            const acc = results[i];
+            accounts[acc._id] = bundlePlayerData(acc);
+          }
+
+          // Generate and send game data to the requester
+          const data = [];
+          for (let i = 0; i < games.length; i++) {
+            const game = games[i];
+
+            const gameData = {
+              id: game._id,
+              winner: game.winner,
+              player1: accounts[game.player1Id],
+              player2: accounts[game.player2Id],
+              player1Score: game.player1Score,
+              player2Score: game.player2Score,
+              date: game.createdDate,
+            };
+
+            data.push(gameData);
+          }
+
+          return res.status(200).json({ data });
+        });
+      },
+    );
   });
 };
 
@@ -142,4 +252,5 @@ module.exports = {
   getAllProfilePics,
   submitFeedback,
   getGameHistory,
+  getPublicGames,
 };

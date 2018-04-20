@@ -563,7 +563,7 @@ var resizeGame = function resizeGame(e) {
   if (pageView === "#blade") {
     var dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
-  } else if (viewport && document.querySelector("#modalContainer div").classList.contains("show")) {
+  } else if (viewport && document.querySelector("#modalContainer div") && document.querySelector("#modalContainer div").classList.contains("show")) {
     renderPlayback(true);
   }
 };
@@ -583,6 +583,11 @@ var loadView = function loadView() {
       {
         var dimensions = calcDisplayDimensions();
         renderGame(dimensions.width, dimensions.height);
+        break;
+      }
+    case "#results":
+      {
+        renderPublicResults();
         break;
       }
     case "#instructions":
@@ -800,6 +805,17 @@ var handleFeedback = function handleFeedback(e) {
   sendAjax('POST', $("#feedbackForm").attr("action"), $("#feedbackForm").serialize(), function () {
     handleSuccess("Feedback successfully submitted!");
     $("#feedbackText").val("");
+  });
+
+  return false;
+};
+
+//Handle a request to get a list of public games
+var handlePublicGameRequest = function handlePublicGameRequest(e) {
+  e.preventDefault();
+
+  sendAjax('GET', $("#publicGameResultsForm").attr("action"), $("#publicGameResultsForm").serialize(), function (data) {
+    renderPublicGameList(data.data);
   });
 
   return false;
@@ -1525,6 +1541,347 @@ var GameHistory = function GameHistory(props) {
   );
 };
 
+var PublicGameList = function PublicGameList(props) {
+
+  var games = props.games;
+  games = games.map(function (game, index) {
+
+    var date = new Date(game.date);
+    var player1Profile = game.player1;
+    var player2Profile = game.player2;
+    var player1Score = game.player1Score;
+    var player2Score = game.player2Score;
+
+    var gameStatus = void 0;
+    var gameStatusColor = "text-primary";
+
+    if (game.winner === "player1") {
+      gameStatus = player1Profile.username + "'s WIN";
+    } else if (game.winner === "player2") {
+      gameStatus = player2Profile.username + "'s WIN";
+    } else {
+      gameStatus = "TIED GAME";
+    }
+
+    return React.createElement(
+      "li",
+      { className: "list-group-item d-flex bg-light" },
+      React.createElement(
+        "div",
+        { className: "publicGameItem" },
+        React.createElement(
+          "span",
+          { className: "badge badge-primary badge-pill" },
+          "#",
+          index + 1
+        ),
+        React.createElement(
+          "figure",
+          { className: "text-centered" },
+          React.createElement("img", { src: player1Profile.profileData.imageFile, alt: player1Profile.profileData.name }),
+          React.createElement(
+            "figcaption",
+            null,
+            player1Profile.username
+          )
+        ),
+        React.createElement(
+          "span",
+          null,
+          " VS "
+        ),
+        React.createElement(
+          "figure",
+          { className: "text-centered" },
+          React.createElement("img", { src: player2Profile.profileData.imageFile, alt: player2Profile.profileData.name }),
+          React.createElement(
+            "figcaption",
+            null,
+            player2Profile.username
+          )
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "publicGameItem pull-right text-center" },
+        React.createElement(
+          "h1",
+          { className: gameStatusColor },
+          gameStatus
+        ),
+        React.createElement(
+          "p",
+          null,
+          player1Profile.username,
+          "'s Score: ",
+          player1Score
+        ),
+        React.createElement(
+          "p",
+          null,
+          player2Profile.username,
+          "'s Score: ",
+          player2Score
+        ),
+        React.createElement(
+          "p",
+          null,
+          "Date of Game: ",
+          date.toDateString()
+        )
+      ),
+      React.createElement(
+        "div",
+        { className: "buttonDiv" },
+        React.createElement("span", { "data-id": game.id }),
+        React.createElement(
+          "button",
+          { className: "btn btn-lg btn-primary", onClick: requestPlaybackData },
+          "Watch Replay ",
+          React.createElement("span", { className: "fas fa-play" })
+        )
+      )
+    );
+  });
+
+  //Build the entire public game list panel, with all game results included
+  return React.createElement(
+    "div",
+    null,
+    React.createElement(
+      "p",
+      { className: "lead" },
+      "Sorted by most recent to least recent:"
+    ),
+    React.createElement(
+      "p",
+      { className: "lead" },
+      "# of Results: ",
+      games.length
+    ),
+    React.createElement(
+      "div",
+      { id: "gameHistoryList" },
+      React.createElement(
+        "ul",
+        { className: "list-group" },
+        games
+      )
+    ),
+    React.createElement(
+      "div",
+      null,
+      React.createElement(
+        "ul",
+        { "class": "pagination pagination-lg" },
+        React.createElement(
+          "li",
+          { "class": "page-item disabled" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: pageView + "-1" },
+            "\xAB"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item active" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "1"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "2"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "3"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "4"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "5"
+          )
+        ),
+        React.createElement(
+          "li",
+          { "class": "page-item" },
+          React.createElement(
+            "a",
+            { "class": "page-link", href: "#" },
+            "\xBB"
+          )
+        )
+      )
+    )
+  );
+};
+
+//Construct a game history panel the lists a collection of publicly available matches
+var PublicResults = function PublicResults(props) {
+  var april13th2018 = '2018-04-13';
+  var today = new Date().toISOString().split("T")[0];
+
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Public Game Results:"
+      ),
+      React.createElement(
+        "p",
+        { className: "lead" },
+        "Search for games and watch replays!"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "form",
+        { id: "publicGameResultsForm", name: "publicGameResultsForm",
+          onSubmit: handlePublicGameRequest,
+          action: "/getPublicGames",
+          method: "GET",
+          className: "mainForm"
+        },
+        React.createElement(
+          "h2",
+          null,
+          "Game Search Criteria"
+        ),
+        React.createElement(
+          "fieldset",
+          null,
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-align" },
+            React.createElement(
+              "label",
+              { htmlFor: "username", className: "col-sm-3 col-from-label" },
+              "Username: "
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-9" },
+              React.createElement("input", { id: "user", className: "form-control", type: "text", name: "username", placholder: "Case Sensitive Username" })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-align" },
+            React.createElement(
+              "label",
+              { htmlFor: "startDate", className: "col-sm-3 col-from-label" },
+              "Start Date: "
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-9" },
+              React.createElement("input", { id: "startDate", className: "form-control", type: "date", name: "startDate",
+                min: april13th2018, max: today /*value={april13th2018}*/
+              })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-align" },
+            React.createElement(
+              "label",
+              { htmlFor: "endDate", className: "col-sm-3 col-from-label" },
+              "End Date: "
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-9" },
+              React.createElement("input", { id: "endDate", className: "form-control", type: "date", name: "endDate",
+                min: april13th2018, max: today /*value={today}*/
+              })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-align" },
+            React.createElement(
+              "label",
+              { htmlFor: "limit", className: "col-sm-3 col-from-label" },
+              "Game result limit: "
+            ),
+            React.createElement(
+              "div",
+              { className: "col-sm-9" },
+              React.createElement(
+                "select",
+                { name: "limit", className: "custom-select" },
+                React.createElement(
+                  "option",
+                  { value: "50", selected: true },
+                  "50"
+                ),
+                React.createElement(
+                  "option",
+                  { value: "100" },
+                  "100"
+                ),
+                React.createElement(
+                  "option",
+                  { value: "200" },
+                  "200"
+                ),
+                React.createElement(
+                  "option",
+                  { value: "unlim" },
+                  "Unlimited"
+                )
+              )
+            )
+          ),
+          React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-align" },
+            React.createElement("input", { type: "submit", id: "getPublicGames", value: "Search For Games", className: "btn btn-lg btn-primary" })
+          )
+        )
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "Results"
+      ),
+      React.createElement("div", { id: "publicGameResults" })
+    )
+  );
+};
+
 //Build a pop-out modal window to display to the user
 var SiteModal = function SiteModal(props) {
   var id = "playbackModal";
@@ -1755,6 +2112,21 @@ var renderPlayback = function renderPlayback(renderDisplay) {
 //Render the left panel as empty
 var clearLeftPane = function clearLeftPane() {
   ReactDOM.render(React.createElement("div", null), document.querySelector("#room"));
+};
+
+//Make a call to render the public game history
+var renderPublicResults = function renderPublicResults() {
+  getTokenWithCallback(function (csrfToken) {
+    ReactDOM.render(React.createElement(PublicResults, { csrf: csrfToken }), document.querySelector("#main"));
+  });
+
+  clearLeftPane();
+};
+
+//Handle game results sent from the server
+var renderPublicGameList = function renderPublicGameList(games) {
+  console.log(games);
+  ReactDOM.render(React.createElement(PublicGameList, { games: games }), document.querySelector("#publicGameResults"));
 };
 
 //Make a call to render the game history section
@@ -2253,10 +2625,13 @@ var executePlayback = function executePlayback() {
           winner: winner
         };
 
-        action = function action() {
-          updateGamestate(_update2);
-        };
-        break;
+        //No point in waiting for turn length here
+        updateGamestate(_update2);
+
+        //Terminate the remaining turn sequence information
+        turnSequence = [];
+
+        return;
       }
     default:
       {

@@ -135,6 +135,17 @@ const handleFeedback = (e) => {
   return false;
 };
 
+//Handle a request to get a list of public games
+const handlePublicGameRequest = (e) => {
+  e.preventDefault();
+  
+  sendAjax('GET', $("#publicGameResultsForm").attr("action"), $("#publicGameResultsForm").serialize(), (data) => {
+    renderPublicGameList(data.data);
+  });
+  
+  return false;
+};
+
 //Construct a window to create / join a room for playing Blade
 const RoomWindow = (props) => {
   
@@ -532,7 +543,165 @@ const GameHistory = (props) => {
       </div>
     </div>
   );
-}
+};
+
+const PublicGameList = (props) => {
+  
+  let games = props.games;
+  games = games.map((game, index) => {
+    
+    const date = new Date(game.date);
+    const player1Profile = game.player1;
+    const player2Profile = game.player2;
+    const player1Score = game.player1Score;
+    const player2Score = game.player2Score;
+    
+    let gameStatus;
+    const gameStatusColor = "text-primary";
+    
+    if(game.winner === "player1"){
+      gameStatus = `${player1Profile.username}'s WIN`;
+    } else if (game.winner === "player2"){
+      gameStatus = `${player2Profile.username}'s WIN`;
+    } else {
+      gameStatus = "TIED GAME";
+    }
+    
+    return (
+      <li className="list-group-item d-flex bg-light">
+        <div className="publicGameItem">
+          <span className="badge badge-primary badge-pill">#{index + 1}</span>
+          <figure className="text-centered">
+            <img src={player1Profile.profileData.imageFile} alt={player1Profile.profileData.name} />
+            <figcaption>{player1Profile.username}</figcaption>
+          </figure>
+          <span> VS </span>
+          <figure className="text-centered">
+            <img src={player2Profile.profileData.imageFile} alt={player2Profile.profileData.name} />
+            <figcaption>{player2Profile.username}</figcaption>
+          </figure>
+        </div>
+        <div className="publicGameItem pull-right text-center">
+          <h1 className={gameStatusColor}>{gameStatus}</h1>
+          <p>{player1Profile.username}'s Score: {player1Score}</p>
+          <p>{player2Profile.username}'s Score: {player2Score}</p>
+          <p>Date of Game: {date.toDateString()}</p>
+        </div>
+        <div className="buttonDiv">
+          <span data-id={game.id}></span>
+          <button className="btn btn-lg btn-primary" onClick={requestPlaybackData}>
+            Watch Replay <span className="fas fa-play"></span>
+          </button>
+        </div>
+      </li>
+    );
+  });
+  
+  //Build the entire public game list panel, with all game results included
+  return (
+    <div>
+      <p className="lead">Sorted by most recent to least recent:</p>
+      <p className="lead"># of Results: {games.length}</p>
+      <div id="gameHistoryList">
+        <ul className="list-group">
+          {games}
+        </ul>
+      </div>
+      <div>
+        <ul class="pagination pagination-lg">
+          <li class="page-item disabled">
+            <a class="page-link" href={`${pageView}-1`}>&laquo;</a>
+          </li>
+          <li class="page-item active">
+            <a class="page-link" href="#">1</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="#">2</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="#">3</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="#">4</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="#">5</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="#">&raquo;</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+//Construct a game history panel the lists a collection of publicly available matches
+const PublicResults = (props) => {
+  const april13th2018 = '2018-04-13';
+  const today = new Date().toISOString().split("T")[0];
+  
+  return (
+    <div className="container">
+      <div className="jumbotron">
+        <h1 className="display-3">Public Game Results:</h1>
+        <p className="lead">Search for games and watch replays!</p>
+        <hr className="my-4" />
+        <form id="publicGameResultsForm" name="publicGameResultsForm"
+          onSubmit={handlePublicGameRequest}
+          action="/getPublicGames"
+          method="GET"
+          className="mainForm"
+        >
+          <h2>Game Search Criteria</h2>
+          <fieldset>
+            <div className="form-group row vertical-align">
+              <label htmlFor="username" className="col-sm-3 col-from-label">Username: </label>
+              <div className="col-sm-9">
+                <input id="user" className="form-control" type="text" name="username" placholder="Case Sensitive Username" />
+              </div>
+            </div>
+            <div className="form-group row vertical-align">
+              <label htmlFor="startDate" className="col-sm-3 col-from-label">Start Date: </label>
+              <div className="col-sm-9">
+                <input id="startDate" className="form-control" type="date" name="startDate"
+                  min={april13th2018} max={today} /*value={april13th2018}*/
+                />
+              </div>
+            </div>
+            <div className="form-group row vertical-align">
+              <label htmlFor="endDate" className="col-sm-3 col-from-label">End Date: </label>
+              <div className="col-sm-9">
+                <input id="endDate" className="form-control" type="date" name="endDate"
+                  min={april13th2018} max={today} /*value={today}*/
+                />
+              </div>
+            </div>
+            <div className="form-group row vertical-align">
+              <label htmlFor="limit" className="col-sm-3 col-from-label">Game result limit: </label>
+              <div className="col-sm-9">
+                <select name="limit" className="custom-select">
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                  <option value="unlim">Unlimited</option>
+                </select>
+              </div>
+            </div>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group row vertical-align">
+              <input type="submit" id="getPublicGames" value="Search For Games" className="btn btn-lg btn-primary" />
+            </div>
+          </fieldset>
+        
+        </form>
+        <hr className="my-4" />
+        <h2>Results</h2>
+        <div id="publicGameResults"></div>
+      </div>
+    </div>
+  );
+};
 
 //Build a pop-out modal window to display to the user
 const SiteModal = (props) => {
@@ -695,6 +864,27 @@ const clearLeftPane = () => {
   ReactDOM.render(
     <div></div>,
     document.querySelector("#room")
+  );
+};
+
+//Make a call to render the public game history
+const renderPublicResults = () => {  
+  getTokenWithCallback((csrfToken) => {
+    ReactDOM.render(
+      <PublicResults csrf={csrfToken} />,
+      document.querySelector("#main")
+    );
+  });
+  
+  clearLeftPane();
+};
+
+//Handle game results sent from the server
+const renderPublicGameList = (games) => {
+  console.log(games);
+  ReactDOM.render(
+    <PublicGameList games={games} />,
+    document.querySelector("#publicGameResults")
   );
 };
 

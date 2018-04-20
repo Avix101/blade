@@ -57,8 +57,10 @@ const resizeGame = (e) => {
   if(pageView === "#blade"){
     const dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
-  } else if(viewport && document.querySelector("#modalContainer div").classList.contains("show")){
-    renderPlayback(true);
+  } else if(viewport 
+    && document.querySelector("#modalContainer div")
+    && document.querySelector("#modalContainer div").classList.contains("show")){
+      renderPlayback(true);
   }
 }
 
@@ -76,6 +78,10 @@ const loadView = () => {
     case "#blade": {
       const dimensions = calcDisplayDimensions();
       renderGame(dimensions.width, dimensions.height);
+      break;
+    }
+    case "#results": {
+      renderPublicResults();
       break;
     }
     case "#instructions": {
