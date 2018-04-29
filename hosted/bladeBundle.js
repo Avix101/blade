@@ -532,6 +532,7 @@ var gameState = {
 };
 
 //Variables for managing playback
+var resetOnClose = false;
 var isPlayingBack = false;
 var playbackData = void 0;
 var playbackSequenceCount = void 0;
@@ -803,26 +804,13 @@ var hideModal = function hideModal() {
     return;
   }
 
-  //modal.classList.remove("show");
+  modal.classList.remove("show");
   modal.classList.add("hide-anim");
 
-  endGame();
-  deck = {};
-  fields = {
-    'player1': [],
-    'player2': []
-  };
-  playbackData = null;
-  isPlayingBack = false;
-  playerProfiles = {};
-  playerStatus = null;
-  turnSequence = [];
-  gameState.turnType = "begin";
-  gameState.turnOwner = null;
-  gameState.player1Points = 0;
-  gameState.player2Points = 0;
-  gameState.winner = null;
-  gameState.waiting = false;
+  if (resetOnClose) {
+    endGame();
+    resetGame();
+  }
 };
 
 //Handle a request to submit feedback
@@ -2270,6 +2258,12 @@ var changePublicGameSet = function changePublicGameSet(e) {
 
 //Request playback data from the server
 var requestPlaybackData = function requestPlaybackData(e) {
+
+  if (inRoom) {
+    handleError("Cannot request playback while in a game room!");
+    return;
+  }
+
   var id = e.target.parentElement.querySelector("span").getAttribute('data-id');
 
   setTimeout(function () {
@@ -2635,8 +2629,9 @@ var roomOptions = function roomOptions(data) {
 
 //Handle playback data sent from the server
 var processPlaybackData = function processPlaybackData(data) {
-  console.log(data);
   endGame();
+  resetGame();
+  resetOnClose = true;
   renderPlayback(true);
   viewport = document.querySelector("#viewportModal");
   viewCtx = viewport.getContext('2d');
@@ -2672,6 +2667,7 @@ var startPlayback = function startPlayback() {
   });
 
   isPlayingBack = true;
+  resetOnClose = true;
   turnSequence = game.gameplay;
   console.log(turnSequence);
 };
@@ -2876,6 +2872,37 @@ var createRoom = function createRoom(e) {
 var joinRoom = function joinRoom(e) {
   var roomId = document.querySelector("#roomName").value;
   socket.emit('joinRoom', { room: roomId });
+};
+
+//Call to reset the gamestate and various variables
+var resetGame = function resetGame() {
+
+  resetOnClose = false;
+
+  var subDeckKeys = Object.keys(deck);
+  for (var i = 0; i < subDeckKeys.length; i++) {
+    var key = subDeckKeys[i];
+    deck[key] = [];
+  }
+
+  deck = {};
+  fields = {
+    'player1': [],
+    'player2': []
+  };
+
+  playbackData = null;
+  isPlayingBack = false;
+  playerProfiles = {};
+  playerStatus = null;
+  turnSequence = [];
+
+  gameState.turnType = "begin";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
 };
 
 //When a room is joined, prepare for a new game
@@ -3389,8 +3416,12 @@ var playCard = function playCard(data) {
           });
         } else {
           fields[data.cardSet].push(card);
-          stackCards(fields[data.cardSet], true, 500);
           spliceOpponentCard(cardSet, data.index);
+          stackCards(fields[data.cardSet], false, 500, function () {
+            animateDeckWhenReady(fields[data.cardSet], function () {
+              startCardFlip([card], false);
+            });
+          });
         }
         break;
       default:

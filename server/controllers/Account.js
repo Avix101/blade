@@ -2,6 +2,7 @@ const models = require('../models');
 const profilePics = require('./profiles.js');
 
 const { Account } = models;
+let guestNumber = 1;
 
 // Render the login page and send a csrf token
 const loginPage = (req, res) => {
@@ -34,6 +35,23 @@ const login = (request, response) => {
     }
 
     req.session.account = Account.AccountModel.toAPI(account);
+
+    return res.json({ redirect: '/blade' });
+  });
+};
+
+// Login a user as a guest
+const guestLogin = (req, res) => {
+  Account.AccountModel.findByUsername('Guest', (err, account) => {
+    if (err || !account) {
+      return res.status(401).json({ error: 'Guest accounts not enabled' });
+    }
+
+    req.session.account = Account.AccountModel.toAPI(account);
+
+    // Give the guest a unique username
+    req.session.account.username = `${req.session.account.username}#${guestNumber}`;
+    guestNumber++;
 
     return res.json({ redirect: '/blade' });
   });
@@ -207,6 +225,7 @@ const getToken = (request, response) => {
 module.exports = {
   loginPage,
   login,
+  guestLogin,
   logout,
   signup,
   updatePassword,

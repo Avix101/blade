@@ -128,26 +128,13 @@ const hideModal = () => {
     return;
   }
   
-  //modal.classList.remove("show");
+  modal.classList.remove("show");
   modal.classList.add("hide-anim");
   
-  endGame();
-  deck = {};
-  fields = {
-  'player1': [],
-  'player2': [],
-  };
-  playbackData = null;
-  isPlayingBack = false;
-  playerProfiles = {};
-  playerStatus = null;
-  turnSequence = [];
-  gameState.turnType = "begin";
-  gameState.turnOwner = null;
-  gameState.player1Points = 0;
-  gameState.player2Points = 0;
-  gameState.winner = null;
-  gameState.waiting = false;
+  if(resetOnClose){
+    endGame();
+    resetGame();
+  }
 };
 
 //Handle a request to submit feedback
@@ -1005,6 +992,12 @@ const changePublicGameSet = (e) => {
 
 //Request playback data from the server
 const requestPlaybackData = (e) => {
+  
+  if(inRoom){
+    handleError("Cannot request playback while in a game room!");
+    return;
+  }
+  
   const id = e.target.parentElement.querySelector("span").getAttribute('data-id');
   
   setTimeout(() => {

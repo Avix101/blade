@@ -14,39 +14,98 @@ const handleLogin = (e) => {
 	return false;
 };
 
+//Process a request to login as a guest
+const handleGuestLogin = (e) => {
+  e.preventDefault();
+  
+  sendAjax('GET', $("#guestLoginForm").attr("action"), null, redirect);
+  
+  return false;
+};
+
+//Process a request to login with reddit
+const handleRedditLogin = (e) => {
+  e.preventDefault();
+  
+  return false;
+};
+
 //Construct a login window / form that allows the user to enter their details
 const LoginWindow = (props) => {
 	return (
-		<form id="loginForm" name="loginForm"
-			onSubmit={handleLogin}
-			action="/login"
-			method="POST"
-			className="mainForm"
-		>
-      <fieldset>
-        <legend>Login</legend>
-        <div className="form-group row">
-          <label htmlFor="username" className="col-sm-3 col-form-label">Username: </label>
-          <div className="col-sm-9">
-            <input id="user" className="form-control" type="text" name="username" placeholder="username" />
-          </div>
-        </div>
-        <div className="form-group row">
-          <label htmlFor="pass" className="col-sm-3 col-form-label">Password: </label>
-          <div className="col-sm-9">
-            <input id="pass" className="form-control" type="password" name="pass" placeholder="password" />
-          </div>
-        </div>
-        <input type="hidden" name="_csrf" value={props.csrf} />
-        <div className="form-group row row-centered text-center">
-          <div className="col-sm-2"></div>
-          <div className="col-sm-8 col-centered">
-            <input id="loginButton" className="formSubmit btn btn-lg btn-primary" type="submit" value="Sign in" />
-          </div>
-          <div className="col-sm-2"></div>
-        </div>
-      </fieldset>
-		</form>
+		<div className="row">
+      <div className="col-lg-6">
+        <form id="loginForm" name="loginForm"
+          onSubmit={handleLogin}
+          action="/login"
+          method="POST"
+          className="mainForm"
+        >
+          <fieldset>
+            <legend>Login</legend>
+            <div className="form-group row">
+              <label htmlFor="username" className="col-sm-3 col-form-label">Username: </label>
+              <div className="col-sm-9">
+                <input id="user" className="form-control" type="text" name="username" placeholder="username" />
+              </div>
+            </div>
+            <div className="form-group row">
+              <label htmlFor="pass" className="col-sm-3 col-form-label">Password: </label>
+              <div className="col-sm-9">
+                <input id="pass" className="form-control" type="password" name="pass" placeholder="password" />
+              </div>
+            </div>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group row row-centered text-center">
+              <div className="col-sm-2"></div>
+              <div className="col-sm-8 col-centered">
+                <input id="loginButton" className="formSubmit btn btn-lg btn-primary" type="submit" value="Sign in" />
+              </div>
+              <div className="col-sm-2"></div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div className="col-lg-6 border-left">
+        <form id="guestLoginForm" name="guestLoginForm"
+          onSubmit={handleGuestLogin}
+          action="/guestLogin"
+          method="POST"
+          className="mainForm"
+        >
+          <fieldset>
+            <legend>Alternative Logins</legend>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group row row-centered text-center">
+              <div className="col-sm-2"></div>
+              <div className="col-sm-8 col-centered">
+                <input id="guestLoginButton" className="formSubmit btn btn-lg btn-primary" type="submit" value="Login as guest" />
+              </div>
+              <div className="col-sm-2"></div>
+            </div>
+          </fieldset>
+        </form>
+        <form id="redditLoginForm" name="redditLoginForm"
+          onSubmit={handleRedditLogin}
+          action="/redditLogin"
+          method="POST"
+          className="mainForm"
+        >
+          <fieldset>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group row row-centered text-center">
+              <div className="col-sm-2"></div>
+              <div className="col-sm-8 col-centered">
+                <button id="redditLoginButton" className="formSubmit btn btn-lg btn-danger" type="submit">
+                  Login w/ Reddit <span className="fab fa-reddit-alien"></span>
+                </button>
+              </div>
+              <div className="col-sm-2"></div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+    </div>
 	);
 };
 
@@ -80,52 +139,58 @@ const handleSignup = (e) => {
 //Construct a sign up window that allows users to select a username, password, and profile character
 const SignupWindow = (props) => {
 	return (
-		<form id="signupForm"
-			name="signupForm"
-			onSubmit={handleSignup}
-			action="/signup"
-			method="POST"
-			className="mainForm"
-		>
-      <fieldset>
-        <legend>Sign Up</legend>
-        <div className="form-group row">
-          <label htmlFor="username" className="col-sm-3 col-form-label">Username: </label>
-          <div className="col-sm-9">
-            <input id="user" className="form-control" type="text" name="username" placeholder="username" />
-          </div>
-        </div>
-        <div className="form-group row">
-          <label htmlFor="pass" className="col-sm-3 col-form-label">Password: </label>
-          <div className="col-sm-9">
-            <input id="pass" className="form-control" type="password" name="pass" placeholder="password" />
-          </div>
-        </div>
-        <div className="form-group row">
-          <label htmlFor="pass2" className="col-sm-3 col-form-label">Password: </label>
-          <div className="col-sm-9">
-            <input id="pass2" className="form-control" type="password" name="pass2" placeholder="retype password" />
-          </div>
-        </div>
-        <hr />
-        <div className="form-group row vertical-center">
-          <label className="col-sm-4 col-form-label">Profile Icon: </label>
-          <div id="profileSelection" className="col-sm-4"></div>
-          <div className="col-sm-4">
-            <img id="profilePreview" className="profileIcon" src="/assets/img/player_icons/alfin.png" alt="profile" />
-          </div>
-        </div>
-        <hr />
-        <input type="hidden" name="_csrf" value={props.csrf} />
-        <div className="form-group row row-centered text-center">
-          <div className="col-sm-2"></div>
-          <div className="col-sm-8 col-centered">
-            <input id="signupButton" className="formSubmit btn btn-lg btn-primary" type="submit" value="Sign Up" />
-          </div>
-          <div className="col-sm-2"></div>
-        </div>
-      </fieldset>
-		</form>
+    <div className="row">
+      <div className="col-lg-3"></div>
+      <div className="col-lg-6">
+        <form id="signupForm"
+          name="signupForm"
+          onSubmit={handleSignup}
+          action="/signup"
+          method="POST"
+          className="mainForm"
+        >
+          <fieldset>
+            <legend>Sign Up</legend>
+            <div className="form-group row">
+              <label htmlFor="username" className="col-sm-3 col-form-label">Username: </label>
+              <div className="col-sm-9">
+                <input id="user" className="form-control" type="text" name="username" placeholder="username" />
+              </div>
+            </div>
+            <div className="form-group row">
+              <label htmlFor="pass" className="col-sm-3 col-form-label">Password: </label>
+              <div className="col-sm-9">
+                <input id="pass" className="form-control" type="password" name="pass" placeholder="password" />
+              </div>
+            </div>
+            <div className="form-group row">
+              <label htmlFor="pass2" className="col-sm-3 col-form-label">Password: </label>
+              <div className="col-sm-9">
+                <input id="pass2" className="form-control" type="password" name="pass2" placeholder="retype password" />
+              </div>
+            </div>
+            <hr />
+            <div className="form-group row vertical-center">
+              <label className="col-sm-4 col-form-label">Profile Icon: </label>
+              <div id="profileSelection" className="col-sm-4"></div>
+              <div className="col-sm-4">
+                <img id="profilePreview" className="profileIcon" src="/assets/img/player_icons/alfin.png" alt="profile" />
+              </div>
+            </div>
+            <hr />
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group row row-centered text-center">
+              <div className="col-sm-2"></div>
+              <div className="col-sm-8 col-centered">
+                <input id="signupButton" className="formSubmit btn btn-lg btn-primary" type="submit" value="Sign Up" />
+              </div>
+              <div className="col-sm-2"></div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div className="col-lg-3"></div>
+    </div>
 	);
 };
 

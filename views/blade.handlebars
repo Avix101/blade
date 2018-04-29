@@ -52,26 +52,33 @@
         <li class="nav-item">
           <a id="aboutButton" class="nav-link" href="#tocs">About ToCS &amp; ToCS II</a>
         </li>
-        <li class="nav-item">
-          <a id="feedbackButton" class="nav-link" href="#feedback">Feedback</a>
-        </li>
+        {{#unless isGuest}}
+          <li class="nav-item">
+            <a id="feedbackButton" class="nav-link" href="#feedback">Feedback</a>
+          </li>
+        {{/unless}}
       </ul>
       <div class="navbar-right">
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item">
-            
-          </li>
-          <li class="nav-item">
-            <a id="profileButton" class="nav-link" href="#profile">Profile</a>
-          </li>
+          {{#unless isGuest}}
+            <li class="nav-item">
+              <a id="profileButton" class="nav-link" href="#profile">Profile</a>
+            </li>
+          {{/unless}}
           <li class="nav-item navbar-right">
             <a id="logoutButton" class="nav-link" href="/logout">Logout</a>
           </li>
         </ul>
       </div>
-      <a id="profilePic" href="#profile" class="navlink">
-        <img id="profile" width="64px" height="64px" src={{profileData.imageFile}} alt={{profileData.name}} />
-      </a>
+      {{#unless isGuest}}
+        <a id="profilePic" href="#profile" class="navlink">
+          <img id="profile" width="64px" height="64px" src={{profileData.imageFile}} alt={{profileData.name}} />
+        </a>
+      {{else}}
+        <a id="profilePic" href="#blade" class="navlink">
+          <img id="profile" width="64px" height="64px" src={{profileData.imageFile}} alt={{profileData.name}} />
+        </a>
+      {{/unless}}
     </div>
   </nav>
   

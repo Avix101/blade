@@ -231,8 +231,9 @@ const roomOptions = (data) => {
 
 //Handle playback data sent from the server
 const processPlaybackData = (data) => {
-  console.log(data);
   endGame();
+  resetGame();
+  resetOnClose = true;
   renderPlayback(true);
   viewport = document.querySelector("#viewportModal");
   viewCtx = viewport.getContext('2d');
@@ -268,6 +269,7 @@ const startPlayback = () => {
   });
   
   isPlayingBack = true;
+  resetOnClose = true;
   turnSequence = game.gameplay;
   console.log(turnSequence);
 };
@@ -466,6 +468,37 @@ const createRoom = (e) => {
 const joinRoom = (e) => {
   const roomId = document.querySelector("#roomName").value;
   socket.emit('joinRoom', {room: roomId});
+};
+
+//Call to reset the gamestate and various variables
+const resetGame = () => {
+  
+  resetOnClose = false;
+  
+  const subDeckKeys = Object.keys(deck);
+  for(let i = 0; i < subDeckKeys.length; i++){
+    const key = subDeckKeys[i];
+    deck[key] = [];
+  }
+  
+  deck = {};
+  fields = {
+  'player1': [],
+  'player2': [],
+  };
+  
+  playbackData = null;
+  isPlayingBack = false;
+  playerProfiles = {};
+  playerStatus = null;
+  turnSequence = [];
+  
+  gameState.turnType = "begin";
+  gameState.turnOwner = null;
+  gameState.player1Points = 0;
+  gameState.player2Points = 0;
+  gameState.winner = null;
+  gameState.waiting = false;
 };
 
 //When a room is joined, prepare for a new game
@@ -999,8 +1032,12 @@ const playCard = (data) => {
           
         } else {
           fields[data.cardSet].push(card);
-          stackCards(fields[data.cardSet], true, 500);
           spliceOpponentCard(cardSet, data.index);
+          stackCards(fields[data.cardSet], false, 500, () => {
+            animateDeckWhenReady(fields[data.cardSet], () => {
+              startCardFlip([card], false);
+            });
+          });
         }
         break;
       default:

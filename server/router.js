@@ -23,16 +23,17 @@ const attach = (app) => {
   // Handle main http requests (GET and POST)
   app.get('/getToken', mid.requiresSecure, controllers.Account.getToken);
   app.get('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
+  app.get('/guestLogin', mid.requiresSecure, mid.requiresLogout, controllers.Account.guestLogin);
   app.post('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.login);
   app.post('/signup', mid.requiresSecure, mid.requiresLogout, controllers.Account.signup);
-  app.post('/changePassword', mid.requiresLogin, controllers.Account.updatePassword);
-  app.post('/changeIcon', mid.requiresLogin, controllers.Account.updateIcon);
-  app.post('/changePrivacy', mid.requiresLogin, controllers.Account.updatePrivacy);
-  app.post('/changeGamePrivacy', mid.requiresLogin, controllers.Blade.updateGamePrivacy);
-  app.post('/feedback', mid.requiresLogin, controllers.Blade.submitFeedback);
+  app.post('/changePassword', mid.requiresNonGuestLogin, controllers.Account.updatePassword);
+  app.post('/changeIcon', mid.requiresNonGuestLogin, controllers.Account.updateIcon);
+  app.post('/changePrivacy', mid.requiresNonGuestLogin, controllers.Account.updatePrivacy);
+  app.post('/changeGamePrivacy', mid.requiresNonGuestLogin, controllers.Blade.updateGamePrivacy);
+  app.post('/feedback', mid.requiresNonGuestLogin, controllers.Blade.submitFeedback);
   app.get('/getProfile', mid.requiresLogin, controllers.Blade.getProfile);
   app.get('/getProfiles', mid.requiresSecure, controllers.Blade.getAllProfilePics);
-  app.get('/getGameHistory', mid.requiresLogin, controllers.Blade.getGameHistory);
+  app.get('/getGameHistory', mid.requiresNonGuestLogin, controllers.Blade.getGameHistory);
   app.get('/getPublicGames', mid.requiresLogin, controllers.Blade.getPublicGames);
   app.get('/logout', mid.requiresLogin, controllers.Account.logout);
   app.get('/blade', mid.requiresLogin, controllers.Blade.main);

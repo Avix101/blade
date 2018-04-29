@@ -7,6 +7,15 @@ const requiresLogin = (req, res, next) => {
   return next();
 };
 
+// Requires a real account login, not the guest account
+const requiresNonGuestLogin = (req, res, next) => {
+  if (!req.session.account || req.session.account._id.toString() === process.env.GUEST_KEY) {
+    return res.status(400).json({ error: 'This function is reserved for members only' });
+  }
+
+  return next();
+};
+
 // Requires a request to be inauthenticated
 const requiresLogout = (req, res, next) => {
   if (req.session.account) {
@@ -36,6 +45,7 @@ const notFound = (req, res) => {
 };
 
 module.exports.requiresLogin = requiresLogin;
+module.exports.requiresNonGuestLogin = requiresNonGuestLogin;
 module.exports.requiresLogout = requiresLogout;
 module.exports.notFound = notFound;
 

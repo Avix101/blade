@@ -12,6 +12,10 @@ body, html {
   display: none;
 }
 
+.border-left {
+  border-left: 1px solid #ced4da;
+}
+
 #roomSelect {
   margin: auto;
   text-align: center;
@@ -136,7 +140,7 @@ body, html {
   align-items: center;
 }
 
-.show {
+.show, .hide-anim {
   display: block;
 }
 

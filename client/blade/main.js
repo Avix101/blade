@@ -26,6 +26,7 @@ const gameState = {
 };
 
 //Variables for managing playback
+let resetOnClose = false;
 let isPlayingBack = false;
 let playbackData;
 let playbackSequenceCount;

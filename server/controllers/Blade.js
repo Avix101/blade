@@ -11,7 +11,10 @@ const main = (req, res) => {
   const profileData = profilePics[req.session.account.profile_name];
   const { username } = req.session.account;
   const { privacy } = req.session.account;
-  res.render('blade', { profileData, username, privacy });
+  const isGuest = req.session.account._id.toString() === process.env.GUEST_KEY;
+  res.render('blade', {
+    profileData, username, privacy, isGuest,
+  });
 };
 
 // Get a players profile image
