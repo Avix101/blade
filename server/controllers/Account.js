@@ -129,6 +129,36 @@ const updatePassword = (request, response) => {
   });
 };
 
+// Update a user's icon
+const updateIcon = (request, response) => {
+  const req = request;
+  const res = response;
+
+  req.body.profile_name = `${req.body.profile_name}`;
+
+  if (!profilePics[req.body.profile_name]) {
+    return res.status(400).json({ error: 'Profile icon not accepted' });
+  }
+
+  return Account.AccountModel.findById(req.session.account._id, (err, acc) => {
+    if (err || !acc) {
+      return res.status(401).json({ error: 'Account not found' });
+    }
+
+    const account = acc;
+    account.profile_name = req.body.profile_name;
+
+    const savePromise = account.save();
+
+    savePromise.then(() => {
+      req.session.account = Account.AccountModel.toAPI(account);
+      res.status(204).send();
+    });
+
+    return savePromise.catch(() => res.status(500).json({ error: 'Icon could not be updated.' }));
+  });
+};
+
 // Generate a new csrf token for a user
 const getToken = (request, response) => {
   const req = request;
@@ -147,5 +177,6 @@ module.exports = {
   logout,
   signup,
   updatePassword,
+  updateIcon,
   getToken,
 };

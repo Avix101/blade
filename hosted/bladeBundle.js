@@ -763,6 +763,24 @@ var handlePasswordChange = function handlePasswordChange(e) {
   return false;
 };
 
+//Handle a request to change a user's icon
+var handleIconChange = function handleIconChange(e) {
+  e.preventDefault();
+
+  //No need to validate- user can't make a wrong decision, and if they hack into the select,
+  //the server will verify the data
+  var data = $("#iconChangeForm").serialize();
+  sendAjax('POST', $("#iconChangeForm").attr("action"), data, function () {
+    handleSuccess("Player icon successfully changed!");
+    var profileName = $("#profileImgSelect option:selected").val();
+    profileImage = profilePics[profileName].imageFile;
+    $("#profile").attr('src', profileImage);
+    renderProfile();
+  });
+
+  return false;
+};
+
 //Process a request to hide a modal
 var hideModal = function hideModal() {
   var modal = document.querySelector("#modalContainer div");
@@ -1321,6 +1339,88 @@ var ProfileWindow = function ProfileWindow(props) {
               "div",
               { className: "col-sm-5" },
               React.createElement("input", { type: "submit", id: "passwordChangeSubmit", value: "Change Password", className: "btn btn-lg btn-warning formSubmit" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          )
+        )
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "Change Player Icon"
+      ),
+      React.createElement(
+        "form",
+        {
+          id: "iconChangeForm", name: "iconChangeForm",
+          action: "/changeIcon",
+          onSubmit: handleIconChange,
+          method: "POST"
+        },
+        React.createElement(
+          "fieldset",
+          null,
+          React.createElement(
+            "div",
+            { className: "form-group row vertical-center" },
+            React.createElement(
+              "label",
+              { className: "col-sm-3 col-form-label" },
+              "Profile Icon: "
+            ),
+            React.createElement("div", { id: "profileSelection", className: "col-sm-2" }),
+            React.createElement(
+              "div",
+              { className: "col-sm-4" },
+              React.createElement("img", { id: "profilePreview", className: "profileIcon", src: "/assets/img/player_icons/alfin.png", alt: "profile" })
+            )
+          ),
+          React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "div",
+              { className: "col-sm-5" },
+              React.createElement("input", { type: "submit", id: "iconChangeSubmit", value: "Change Icon", className: "btn btn-lg btn-info formSubmit" })
+            ),
+            React.createElement("div", { className: "col-sm-3" }),
+            React.createElement("div", { className: "col-sm-4" })
+          )
+        )
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "h2",
+        null,
+        "Game Results Privacy"
+      ),
+      React.createElement(
+        "form",
+        {
+          id: "privacyChangeForm", name: "privacyChangeForm",
+          action: "/changePrivacy",
+          onSubmit: handleIconChange,
+          method: "POST"
+        },
+        React.createElement(
+          "fieldset",
+          null,
+          React.createElement(
+            "p",
+            { className: "lead" },
+            "While privacy mode is enabled for either you or your opponent, the results of played games will not be publicly viewable."
+          ),
+          React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement(
+            "div",
+            { className: "form-group text-centered row" },
+            React.createElement(
+              "div",
+              { className: "col-sm-5" },
+              React.createElement("input", { type: "submit", id: "privacyChangeSubmit", value: "Enable Privacy Mode", className: "btn btn-lg btn-success formSubmit" })
             ),
             React.createElement("div", { className: "col-sm-3" }),
             React.createElement("div", { className: "col-sm-4" })
@@ -2138,6 +2238,8 @@ var renderGameHistory = function renderGameHistory(games) {
 var renderProfile = function renderProfile() {
   getTokenWithCallback(function (csrfToken) {
     ReactDOM.render(React.createElement(ProfileWindow, { csrf: csrfToken }), document.querySelector("#main"));
+
+    getProfiles();
   });
 
   //Request game history data
@@ -3501,6 +3603,49 @@ var addToChat = function addToChat(text) {
   chatWindow.value = chatWindow.value + "\n" + text;
 };
 "use strict";
+
+var profilePics = void 0;
+
+//If the user selects a different profile character, update the preview image to match
+var alterPreviewImage = function alterPreviewImage(e) {
+  var select = document.querySelector("#profileImgSelect");
+  var key = select.options[select.selectedIndex].value;
+  document.querySelector("#profilePreview").src = profilePics[key].imageFile;
+};
+
+//Construct a profile character selection window
+var ProfileSelection = function ProfileSelection(props) {
+
+  var profileKeys = Object.keys(props.profiles);
+  var profiles = profileKeys.map(function (key) {
+    var profile = props.profiles[key];
+
+    return React.createElement(
+      "option",
+      { value: key },
+      profile.name
+    );
+  });
+
+  return React.createElement(
+    "select",
+    { name: "profile_name", id: "profileImgSelect", onChange: alterPreviewImage, className: "custom-select" },
+    profiles
+  );
+};
+
+//Render / populate the character selection window
+var populateProfileSelection = function populateProfileSelection(profiles) {
+  ReactDOM.render(React.createElement(ProfileSelection, { profiles: profiles }), profileSelection);
+};
+
+//Get all possible profile characters from the server
+var getProfiles = function getProfiles() {
+  sendAjax('GET', '/getProfiles', null, function (data) {
+    populateProfileSelection(data.profilePics);
+    profilePics = data.profilePics;
+  });
+};
 
 //Hide the success message
 var hideSuccess = function hideSuccess(e) {

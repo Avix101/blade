@@ -1,3 +1,49 @@
+let profilePics;
+
+//If the user selects a different profile character, update the preview image to match
+const alterPreviewImage = (e) => {
+  const select = document.querySelector("#profileImgSelect");
+  const key = select.options[select.selectedIndex].value;
+  document.querySelector("#profilePreview").src = profilePics[key].imageFile;
+}
+
+//Construct a profile character selection window
+const ProfileSelection = (props) => {
+  
+  const profileKeys = Object.keys(props.profiles);
+  const profiles = profileKeys.map((key) => {
+    const profile = props.profiles[key];
+    
+    return (
+      <option value={key}>
+        {profile.name}
+      </option>
+    );
+  });
+  
+  return (
+    <select name="profile_name" id="profileImgSelect" onChange={alterPreviewImage} className="custom-select">
+      {profiles}
+    </select>
+  );
+};
+
+//Render / populate the character selection window
+const populateProfileSelection = (profiles) => {
+  ReactDOM.render(
+    <ProfileSelection profiles={profiles} />,
+    profileSelection
+  );
+}
+
+//Get all possible profile characters from the server
+const getProfiles = () => {
+  sendAjax('GET', '/getProfiles', null, (data) => {
+    populateProfileSelection(data.profilePics);
+    profilePics = data.profilePics;
+  });
+};
+
 //Hide the success message
 const hideSuccess = (e) => {
   e.preventDefault();

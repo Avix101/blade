@@ -29,6 +29,10 @@ const AccountSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  privacy: {
+    type: Boolean,
+    default: false,
+  },
   createdDate: {
     type: Date,
     default: Date.now,

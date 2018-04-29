@@ -88,6 +88,24 @@ const handlePasswordChange = (e) => {
 	return false;
 };
 
+//Handle a request to change a user's icon
+const handleIconChange = (e) => {
+  e.preventDefault();
+  
+  //No need to validate- user can't make a wrong decision, and if they hack into the select,
+  //the server will verify the data
+  const data = $("#iconChangeForm").serialize();
+  sendAjax('POST', $("#iconChangeForm").attr("action"), data, () => {
+    handleSuccess(`Player icon successfully changed!`);
+    const profileName = $("#profileImgSelect option:selected").val();
+    profileImage = profilePics[profileName].imageFile;
+    $("#profile").attr('src', profileImage);
+    renderProfile();
+  });
+  
+  return false;
+};
+
 //Process a request to hide a modal
 const hideModal = () => {
   const modal = document.querySelector("#modalContainer div");
@@ -411,6 +429,55 @@ const ProfileWindow = (props) => {
             <div className="form-group text-centered row">
               <div className="col-sm-5">
                 <input type="submit" id="passwordChangeSubmit" value="Change Password" className="btn btn-lg btn-warning formSubmit" />
+              </div>
+              <div className="col-sm-3"></div>
+              <div className="col-sm-4"></div>
+            </div>
+          </fieldset>
+        </form>
+        <hr className="my-4" />
+        
+        <h2>Change Player Icon</h2>
+        <form
+        id="iconChangeForm" name="iconChangeForm"
+        action="/changeIcon"
+        onSubmit={handleIconChange}
+        method="POST"
+        >
+          <fieldset>
+            <div className="form-group row vertical-center">
+              <label className="col-sm-3 col-form-label">Profile Icon: </label>
+              <div id="profileSelection" className="col-sm-2"></div>
+              <div className="col-sm-4">
+                <img id="profilePreview" className="profileIcon" src="/assets/img/player_icons/alfin.png" alt="profile" />
+              </div>
+            </div>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group text-centered row">
+              <div className="col-sm-5">
+                <input type="submit" id="iconChangeSubmit" value="Change Icon" className="btn btn-lg btn-info formSubmit" />
+              </div>
+              <div className="col-sm-3"></div>
+              <div className="col-sm-4"></div>
+            </div>
+          </fieldset>
+        </form>
+        <hr className="my-4" />
+        
+        <h2>Game Results Privacy</h2>
+        <form
+        id="privacyChangeForm" name="privacyChangeForm"
+        action="/changePrivacy"
+        onSubmit={handleIconChange}
+        method="POST"
+        >
+          <fieldset>
+            <p className="lead">While privacy mode is enabled for either you or your opponent,
+            the results of played games will not be publicly viewable.</p>
+            <input type="hidden" name="_csrf" value={props.csrf} />
+            <div className="form-group text-centered row">
+              <div className="col-sm-5">
+                <input type="submit" id="privacyChangeSubmit" value="Enable Privacy Mode" className="btn btn-lg btn-success formSubmit" />
               </div>
               <div className="col-sm-3"></div>
               <div className="col-sm-4"></div>
@@ -903,6 +970,8 @@ const renderProfile = () => {
       <ProfileWindow csrf={csrfToken} />,
       document.querySelector("#main")
     );
+    
+    getProfiles();
   });
   
   //Request game history data
