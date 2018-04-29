@@ -106,6 +106,20 @@ const handleIconChange = (e) => {
   return false;
 };
 
+//Handle a request to change a user's privacy setting
+const handlePrivacyChange = (e) => {
+  e.preventDefault();
+  
+  //Again, no need to validate- either true or false
+  sendAjax('POST', $("#privacyChangeForm").attr("action"), $("#privacyChangeForm").serialize(), () => {
+    handleSuccess('Privacy mode updated!');
+    privacy = $("#privacySetting").val();
+    renderProfile();
+  });
+  
+  return false;
+};
+
 //Process a request to hide a modal
 const hideModal = () => {
   const modal = document.querySelector("#modalContainer div");
@@ -379,6 +393,21 @@ const FeedbackWindow = (props) => {
 
 //Construct a profile panel that holds user info, a password change screen, and game history data
 const ProfileWindow = (props) => {
+  
+  //Determine privacy mode data
+  let dataPrivate;
+  let privateButtonMsg;
+  let privateButtonClass;
+  if(privacy === "true" || privacy === true){
+    dataPrivate = false;
+    privateButtonMsg = "Disable Privacy Mode";
+    privateButtonClass = "btn btn-lg btn-danger formSubmit";
+  } else {
+    dataPrivate = true;
+    privateButtonMsg = "Enable Privacy Mode";
+    privateButtonClass = "btn btn-lg btn-success formSubmit";
+  }
+  
   return (
     <div className="container">
       <div className="jumbotron">
@@ -468,16 +497,18 @@ const ProfileWindow = (props) => {
         <form
         id="privacyChangeForm" name="privacyChangeForm"
         action="/changePrivacy"
-        onSubmit={handleIconChange}
+        onSubmit={handlePrivacyChange}
         method="POST"
         >
           <fieldset>
             <p className="lead">While privacy mode is enabled for either you or your opponent,
-            the results of played games will not be publicly viewable.</p>
+            the results of played games will default to not being publicly viewable. Both
+            players must choose to make a game public for it to be public.</p>
             <input type="hidden" name="_csrf" value={props.csrf} />
+            <input id="privacySetting" type="hidden" name="privacy" value={dataPrivate} />
             <div className="form-group text-centered row">
               <div className="col-sm-5">
-                <input type="submit" id="privacyChangeSubmit" value="Enable Privacy Mode" className="btn btn-lg btn-success formSubmit" />
+                <input type="submit" id="privacyChangeSubmit" value={privateButtonMsg} className={privateButtonClass} />
               </div>
               <div className="col-sm-3"></div>
               <div className="col-sm-4"></div>
@@ -513,6 +544,40 @@ const GameHistory = (props) => {
     const opponentProfile = game.playerIdentity === "player1" ? game.player2 : game.player1;
     const playerScore = game.playerIdentity === "player1" ? game.player1Score : game.player2Score;
     const opponentScore = game.playerIdentity === "player1" ? game.player2Score : game.player1Score;
+    const playerPrivacy = game.playerIdentity === "player1" ? game.player1Privacy : game.player2Privacy;
+    const opponentPrivacy = game.playerIdentity === "player1" ? game.player2Privacy : game.player1Privacy;
+    
+    let playerPrivacyMsg;
+    let opponentPrivacyMsg;
+    let privacyButton;
+    
+    if(opponentPrivacy === true){
+      opponentPrivacyMsg = "Opponent vote: Private";
+    } else {
+      opponentPrivacyMsg = "Opponent vote: Public";
+    }
+    
+    const status = !playerPrivacy && !opponentPrivacy ? "Public" : "Private";
+    
+    //Construct a privacy setting for the game based on the current settings
+    if(playerPrivacy === true){
+      playerPrivacyMsg = "Your vote: Private";
+      
+      const title = `${playerPrivacyMsg}, ${opponentPrivacyMsg}, Status: ${status}`;
+      privacyButton = (
+        <button className="btn btn-lg btn-success" data-private="false" onClick={changeGamePrivacy} title={title}>
+          Make Public <span className="fas fa-unlock"></span>
+        </button>
+      );
+    } else {
+      playerPrivacyMsg = "Your vote: Public";
+      const title = `${playerPrivacyMsg}, ${opponentPrivacyMsg}, Status: ${status}`;
+      privacyButton = (
+        <button className="btn btn-lg btn-danger" data-private="true" onClick={changeGamePrivacy} title={title}>
+          Make Private <span className="fas fa-lock"></span>
+        </button>
+      );
+    }
     
     let gameStatus;
     let gameStatusColor;
@@ -551,10 +616,14 @@ const GameHistory = (props) => {
           <p>Date of Game: {date.toDateString()}</p>
         </div>
         <div className="buttonDiv">
-          <span data-id={game.id}></span>
-          <button className="btn btn-lg btn-primary" onClick={requestPlaybackData}>
-            Watch Replay <span className="fas fa-play"></span>
-          </button>
+          <div>
+            <span data-id={game.id}></span>
+            <button className="btn btn-lg btn-primary" onClick={requestPlaybackData}>
+              Watch Replay <span className="fas fa-play"></span>
+            </button>
+            <br />
+            {privacyButton}
+          </div>
         </div>
       </li>
     );
@@ -664,38 +733,63 @@ const PublicGameList = (props) => {
     );
   });
   
+  let gameLists = [];
+  let paginationTabs = [];
+  
+  //Break up the number of returned games into chunks of 10
+  for(let i = 0; i < games.length; i += 10){
+    
+    const numGamesLeft = games.length - i;
+    let gameSet;
+    
+    if(numGamesLeft <= 10){
+      gameSet = games.slice(i);
+    } else {
+      gameSet = games.slice(i, 10);
+    }
+    
+    //If it's the first set, make it visible. Otherwise, hide the set
+    if(i == 0){
+      gameLists.push(
+        <ul id={`gameSet${i}`} className="list-group">
+          {gameSet}
+        </ul>
+      );
+      paginationTabs.push(
+        <li id={`gameLink${i}`} className="page-item active">
+          <button className="page-link" data-set={i} onClick={changePublicGameSet}>{i + 1}</button>
+        </li>
+      );
+    } else {
+      gameLists.push(
+        <ul id={`gameSet${i}`} className="list-group hidden">
+          {gameSet}
+        </ul>
+      );
+      paginationTabs.push(
+        <li id={`gameLink${i}`} className="page-item">
+          <button className="page-link" data-set={i} onClick={changePublicGameSet}>{i + 1}</button>
+        </li>
+      );
+    }
+  };
+  
   //Build the entire public game list panel, with all game results included
   return (
     <div>
       <p className="lead">Sorted by most recent to least recent:</p>
       <p className="lead"># of Results: {games.length}</p>
       <div id="gameHistoryList">
-        <ul className="list-group">
-          {games}
-        </ul>
+        {gameLists}
       </div>
-      <div>
-        <ul class="pagination pagination-lg">
-          <li class="page-item disabled">
-            <a class="page-link" href={`${pageView}-1`}>&laquo;</a>
+      <div className="flexCenter">
+        <ul id="publicGamePagination" className="pagination pagination-lg">
+          <li className="page-item">
+            <button className="page-link" data-set="0" onClick={changePublicGameSet}>&laquo;</button>
           </li>
-          <li class="page-item active">
-            <a class="page-link" href="#">1</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link" href="#">2</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link" href="#">3</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link" href="#">4</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link" href="#">5</a>
-          </li>
-          <li class="page-item">
-            <a class="page-link" href="#">&raquo;</a>
+          {paginationTabs}
+          <li className="page-item">
+            <button className="page-link" data-set={paginationTabs.length - 1} onClick={changePublicGameSet}>&raquo;</button>
           </li>
         </ul>
       </div>
@@ -893,9 +987,25 @@ const renderPlaybackOptions = () => {
 	);
 };
 
+//Change which set of public games is being viewed
+const changePublicGameSet = (e) => {
+  //Turn off active link / hide the active game set
+  const gamePagination = document.querySelector("#publicGamePagination");
+  const activeLink = gamePagination.querySelector(".active");
+  const activeLinkId = activeLink.getAttribute("id");
+  const activeGameSet = document.querySelector(`#gameSet${activeLinkId.charAt(activeLinkId.length - 1)}`);
+  activeLink.classList.remove("active");
+  activeGameSet.classList.add("hidden");
+  
+  //Active the necessary tab
+  const dataSet = e.target.getAttribute("data-set");
+  document.querySelector(`#gameLink${dataSet}`).classList.add("active");
+  document.querySelector(`#gameSet${dataSet}`).classList.remove("hidden");
+};
+
 //Request playback data from the server
 const requestPlaybackData = (e) => {
-  const id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
+  const id = e.target.parentElement.querySelector("span").getAttribute('data-id');
   
   setTimeout(() => {
 	socket.emit('requestPlaybackData', { id });
@@ -903,6 +1013,21 @@ const requestPlaybackData = (e) => {
   
   renderPlayback(false);
 }
+
+//Change a game's privacy setting
+const changeGamePrivacy = (e) => {
+  
+  const id = e.target.parentElement.querySelector("span").getAttribute('data-id');
+  const privacySetting = e.target.getAttribute('data-private');
+  
+  getTokenWithCallback((csrfToken) => {
+    const data = `id=${id}&privacy_setting=${privacySetting}&_csrf=${csrfToken}`;
+    sendAjax('POST', '/changeGamePrivacy', data, () => {
+      handleSuccess("Game privacy successfully changed!");
+      renderProfile();
+    });
+  });
+};
 
 //Handle an error sent from the server
 const processError = (data) => {
@@ -948,7 +1073,6 @@ const renderPublicResults = () => {
 
 //Handle game results sent from the server
 const renderPublicGameList = (games) => {
-  console.log(games);
   ReactDOM.render(
     <PublicGameList games={games} />,
     document.querySelector("#publicGameResults")

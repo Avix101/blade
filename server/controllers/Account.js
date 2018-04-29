@@ -159,6 +159,39 @@ const updateIcon = (request, response) => {
   });
 };
 
+// Update a user's privacy mode status
+const updatePrivacy = (request, response) => {
+  const req = request;
+  const res = response;
+
+  req.body.privacy = `${req.body.privacy}`;
+
+  // Ensure the value is a boolean
+  if (req.body.privacy === 'true') {
+    req.body.privacy = true;
+  } else {
+    req.body.privacy = false;
+  }
+
+  return Account.AccountModel.findById(req.session.account._id, (err, acc) => {
+    if (err || !acc) {
+      return res.status(401).json({ error: 'Account not found' });
+    }
+
+    const account = acc;
+    account.privacy = req.body.privacy;
+
+    const savePromise = account.save();
+
+    savePromise.then(() => {
+      req.session.account = Account.AccountModel.toAPI(account);
+      res.status(204).send();
+    });
+
+    return savePromise.catch(() => res.status(500).json({ error: 'Privacy mode could not be updated.' }));
+  });
+};
+
 // Generate a new csrf token for a user
 const getToken = (request, response) => {
   const req = request;
@@ -178,5 +211,6 @@ module.exports = {
   signup,
   updatePassword,
   updateIcon,
+  updatePrivacy,
   getToken,
 };

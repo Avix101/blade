@@ -10,7 +10,8 @@ const { Account } = models;
 const main = (req, res) => {
   const profileData = profilePics[req.session.account.profile_name];
   const { username } = req.session.account;
-  res.render('blade', { profileData, username });
+  const { privacy } = req.session.account;
+  res.render('blade', { profileData, username, privacy });
 };
 
 // Get a players profile image
@@ -129,6 +130,8 @@ const getGameHistory = (req, res) => {
           player2: accounts[game.player2Id],
           player1Score: game.player1Score,
           player2Score: game.player2Score,
+          player1Privacy: game.player1Privacy,
+          player2Privacy: game.player2Privacy,
           playerIdentity,
           date: game.createdDate,
         };
@@ -226,6 +229,7 @@ const getPublicGames = (request, response) => {
           for (let i = 0; i < games.length; i++) {
             const game = games[i];
 
+            // if(!game.player1Privacy && !game.player2Privacy){
             const gameData = {
               id: game._id,
               winner: game.winner,
@@ -237,12 +241,56 @@ const getPublicGames = (request, response) => {
             };
 
             data.push(gameData);
+            // }
           }
 
           return res.status(200).json({ data });
         });
       },
     );
+  });
+};
+
+// Change a game's privacy setting (for the client that requests it
+const updateGamePrivacy = (request, response) => {
+  const req = request;
+  const res = response;
+
+  req.body.id = `${req.body.id}`;
+  req.body.privacy_setting = `${req.body.privacy_setting}`;
+
+  // Validate the incoming data
+  if (req.body.privacy_setting === 'true') {
+    req.body.privacy_setting = true;
+  } else {
+    req.body.privacy_setting = false;
+  }
+
+  // Find the related game result
+  GameResult.GameResultModel.findById(req.body.id, (err, result) => {
+    if (err || !result) {
+      return res.status(400).json({ error: 'Game could not be retrieved' });
+    }
+
+    const game = result;
+
+    // Change the setting for player 1, player 2 or both if they are the same
+    if (req.session.account._id.toString() === game.player1Id.toString()) {
+      game.player1Privacy = req.body.privacy_setting;
+    }
+
+    if (req.session.account._id.toString() === game.player2Id.toString()) {
+      game.player2Privacy = req.body.privacy_setting;
+    }
+
+    // Save the result
+    const savePromise = game.save();
+
+    savePromise.then(() => {
+      res.status(204).send();
+    });
+
+    return savePromise.catch(() => res.status(500).json({ error: 'Privacy setting could not be updated' }));
   });
 };
 
@@ -253,4 +301,5 @@ module.exports = {
   submitFeedback,
   getGameHistory,
   getPublicGames,
+  updateGamePrivacy,
 };

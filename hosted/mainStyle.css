@@ -112,10 +112,22 @@ body, html {
   vertical-align: top;
 }
 
-.buttonDiv {
+.buttonDiv, .flexCenter {
   display: flex;
+  text-align: center;
   justify-content: center;
   align-items: center;
+}
+
+#publicGamePagination {
+  margin: auto;
+  margin-top: 8px;
+  text-align: center;
+  align-content: center;
+}
+
+.buttonDiv div button {
+  margin-bottom: 8px;
 }
 
 .vertical-align {

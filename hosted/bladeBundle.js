@@ -781,6 +781,20 @@ var handleIconChange = function handleIconChange(e) {
   return false;
 };
 
+//Handle a request to change a user's privacy setting
+var handlePrivacyChange = function handlePrivacyChange(e) {
+  e.preventDefault();
+
+  //Again, no need to validate- either true or false
+  sendAjax('POST', $("#privacyChangeForm").attr("action"), $("#privacyChangeForm").serialize(), function () {
+    handleSuccess('Privacy mode updated!');
+    privacy = $("#privacySetting").val();
+    renderProfile();
+  });
+
+  return false;
+};
+
 //Process a request to hide a modal
 var hideModal = function hideModal() {
   var modal = document.querySelector("#modalContainer div");
@@ -1232,6 +1246,21 @@ var FeedbackWindow = function FeedbackWindow(props) {
 
 //Construct a profile panel that holds user info, a password change screen, and game history data
 var ProfileWindow = function ProfileWindow(props) {
+
+  //Determine privacy mode data
+  var dataPrivate = void 0;
+  var privateButtonMsg = void 0;
+  var privateButtonClass = void 0;
+  if (privacy === "true" || privacy === true) {
+    dataPrivate = false;
+    privateButtonMsg = "Disable Privacy Mode";
+    privateButtonClass = "btn btn-lg btn-danger formSubmit";
+  } else {
+    dataPrivate = true;
+    privateButtonMsg = "Enable Privacy Mode";
+    privateButtonClass = "btn btn-lg btn-success formSubmit";
+  }
+
   return React.createElement(
     "div",
     { className: "container" },
@@ -1402,7 +1431,7 @@ var ProfileWindow = function ProfileWindow(props) {
         {
           id: "privacyChangeForm", name: "privacyChangeForm",
           action: "/changePrivacy",
-          onSubmit: handleIconChange,
+          onSubmit: handlePrivacyChange,
           method: "POST"
         },
         React.createElement(
@@ -1411,16 +1440,17 @@ var ProfileWindow = function ProfileWindow(props) {
           React.createElement(
             "p",
             { className: "lead" },
-            "While privacy mode is enabled for either you or your opponent, the results of played games will not be publicly viewable."
+            "While privacy mode is enabled for either you or your opponent, the results of played games will default to not being publicly viewable. Both players must choose to make a game public for it to be public."
           ),
           React.createElement("input", { type: "hidden", name: "_csrf", value: props.csrf }),
+          React.createElement("input", { id: "privacySetting", type: "hidden", name: "privacy", value: dataPrivate }),
           React.createElement(
             "div",
             { className: "form-group text-centered row" },
             React.createElement(
               "div",
               { className: "col-sm-5" },
-              React.createElement("input", { type: "submit", id: "privacyChangeSubmit", value: "Enable Privacy Mode", className: "btn btn-lg btn-success formSubmit" })
+              React.createElement("input", { type: "submit", id: "privacyChangeSubmit", value: privateButtonMsg, className: privateButtonClass })
             ),
             React.createElement("div", { className: "col-sm-3" }),
             React.createElement("div", { className: "col-sm-4" })
@@ -1453,6 +1483,42 @@ var GameHistory = function GameHistory(props) {
     var opponentProfile = game.playerIdentity === "player1" ? game.player2 : game.player1;
     var playerScore = game.playerIdentity === "player1" ? game.player1Score : game.player2Score;
     var opponentScore = game.playerIdentity === "player1" ? game.player2Score : game.player1Score;
+    var playerPrivacy = game.playerIdentity === "player1" ? game.player1Privacy : game.player2Privacy;
+    var opponentPrivacy = game.playerIdentity === "player1" ? game.player2Privacy : game.player1Privacy;
+
+    var playerPrivacyMsg = void 0;
+    var opponentPrivacyMsg = void 0;
+    var privacyButton = void 0;
+
+    if (opponentPrivacy === true) {
+      opponentPrivacyMsg = "Opponent vote: Private";
+    } else {
+      opponentPrivacyMsg = "Opponent vote: Public";
+    }
+
+    var status = !playerPrivacy && !opponentPrivacy ? "Public" : "Private";
+
+    //Construct a privacy setting for the game based on the current settings
+    if (playerPrivacy === true) {
+      playerPrivacyMsg = "Your vote: Private";
+
+      var title = playerPrivacyMsg + ", " + opponentPrivacyMsg + ", Status: " + status;
+      privacyButton = React.createElement(
+        "button",
+        { className: "btn btn-lg btn-success", "data-private": "false", onClick: changeGamePrivacy, title: title },
+        "Make Public ",
+        React.createElement("span", { className: "fas fa-unlock" })
+      );
+    } else {
+      playerPrivacyMsg = "Your vote: Public";
+      var _title = playerPrivacyMsg + ", " + opponentPrivacyMsg + ", Status: " + status;
+      privacyButton = React.createElement(
+        "button",
+        { className: "btn btn-lg btn-danger", "data-private": "true", onClick: changeGamePrivacy, title: _title },
+        "Make Private ",
+        React.createElement("span", { className: "fas fa-lock" })
+      );
+    }
 
     var gameStatus = void 0;
     var gameStatusColor = void 0;
@@ -1540,12 +1606,18 @@ var GameHistory = function GameHistory(props) {
       React.createElement(
         "div",
         { className: "buttonDiv" },
-        React.createElement("span", { "data-id": game.id }),
         React.createElement(
-          "button",
-          { className: "btn btn-lg btn-primary", onClick: requestPlaybackData },
-          "Watch Replay ",
-          React.createElement("span", { className: "fas fa-play" })
+          "div",
+          null,
+          React.createElement("span", { "data-id": game.id }),
+          React.createElement(
+            "button",
+            { className: "btn btn-lg btn-primary", onClick: requestPlaybackData },
+            "Watch Replay ",
+            React.createElement("span", { className: "fas fa-play" })
+          ),
+          React.createElement("br", null),
+          privacyButton
         )
       )
     );
@@ -1744,6 +1816,55 @@ var PublicGameList = function PublicGameList(props) {
     );
   });
 
+  var gameLists = [];
+  var paginationTabs = [];
+
+  //Break up the number of returned games into chunks of 10
+  for (var i = 0; i < games.length; i += 10) {
+
+    var numGamesLeft = games.length - i;
+    var gameSet = void 0;
+
+    if (numGamesLeft <= 10) {
+      gameSet = games.slice(i);
+    } else {
+      gameSet = games.slice(i, 10);
+    }
+
+    //If it's the first set, make it visible. Otherwise, hide the set
+    if (i == 0) {
+      gameLists.push(React.createElement(
+        "ul",
+        { id: "gameSet" + i, className: "list-group" },
+        gameSet
+      ));
+      paginationTabs.push(React.createElement(
+        "li",
+        { id: "gameLink" + i, className: "page-item active" },
+        React.createElement(
+          "button",
+          { className: "page-link", "data-set": i, onClick: changePublicGameSet },
+          i + 1
+        )
+      ));
+    } else {
+      gameLists.push(React.createElement(
+        "ul",
+        { id: "gameSet" + i, className: "list-group hidden" },
+        gameSet
+      ));
+      paginationTabs.push(React.createElement(
+        "li",
+        { id: "gameLink" + i, className: "page-item" },
+        React.createElement(
+          "button",
+          { className: "page-link", "data-set": i, onClick: changePublicGameSet },
+          i + 1
+        )
+      ));
+    }
+  };
+
   //Build the entire public game list panel, with all game results included
   return React.createElement(
     "div",
@@ -1762,78 +1883,30 @@ var PublicGameList = function PublicGameList(props) {
     React.createElement(
       "div",
       { id: "gameHistoryList" },
-      React.createElement(
-        "ul",
-        { className: "list-group" },
-        games
-      )
+      gameLists
     ),
     React.createElement(
       "div",
-      null,
+      { className: "flexCenter" },
       React.createElement(
         "ul",
-        { "class": "pagination pagination-lg" },
+        { id: "publicGamePagination", className: "pagination pagination-lg" },
         React.createElement(
           "li",
-          { "class": "page-item disabled" },
+          { className: "page-item" },
           React.createElement(
-            "a",
-            { "class": "page-link", href: pageView + "-1" },
+            "button",
+            { className: "page-link", "data-set": "0", onClick: changePublicGameSet },
             "\xAB"
           )
         ),
+        paginationTabs,
         React.createElement(
           "li",
-          { "class": "page-item active" },
+          { className: "page-item" },
           React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
-            "1"
-          )
-        ),
-        React.createElement(
-          "li",
-          { "class": "page-item" },
-          React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
-            "2"
-          )
-        ),
-        React.createElement(
-          "li",
-          { "class": "page-item" },
-          React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
-            "3"
-          )
-        ),
-        React.createElement(
-          "li",
-          { "class": "page-item" },
-          React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
-            "4"
-          )
-        ),
-        React.createElement(
-          "li",
-          { "class": "page-item" },
-          React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
-            "5"
-          )
-        ),
-        React.createElement(
-          "li",
-          { "class": "page-item" },
-          React.createElement(
-            "a",
-            { "class": "page-link", href: "#" },
+            "button",
+            { className: "page-link", "data-set": paginationTabs.length - 1, onClick: changePublicGameSet },
             "\xBB"
           )
         )
@@ -2179,15 +2252,46 @@ var renderPlaybackOptions = function renderPlaybackOptions() {
   }), document.querySelector("#playbackOptions"));
 };
 
+//Change which set of public games is being viewed
+var changePublicGameSet = function changePublicGameSet(e) {
+  //Turn off active link / hide the active game set
+  var gamePagination = document.querySelector("#publicGamePagination");
+  var activeLink = gamePagination.querySelector(".active");
+  var activeLinkId = activeLink.getAttribute("id");
+  var activeGameSet = document.querySelector("#gameSet" + activeLinkId.charAt(activeLinkId.length - 1));
+  activeLink.classList.remove("active");
+  activeGameSet.classList.add("hidden");
+
+  //Active the necessary tab
+  var dataSet = e.target.getAttribute("data-set");
+  document.querySelector("#gameLink" + dataSet).classList.add("active");
+  document.querySelector("#gameSet" + dataSet).classList.remove("hidden");
+};
+
 //Request playback data from the server
 var requestPlaybackData = function requestPlaybackData(e) {
-  var id = e.target.parentElement.querySelector("span").getAttribute('data-id');;
+  var id = e.target.parentElement.querySelector("span").getAttribute('data-id');
 
   setTimeout(function () {
     socket.emit('requestPlaybackData', { id: id });
   }, 1000);
 
   renderPlayback(false);
+};
+
+//Change a game's privacy setting
+var changeGamePrivacy = function changeGamePrivacy(e) {
+
+  var id = e.target.parentElement.querySelector("span").getAttribute('data-id');
+  var privacySetting = e.target.getAttribute('data-private');
+
+  getTokenWithCallback(function (csrfToken) {
+    var data = "id=" + id + "&privacy_setting=" + privacySetting + "&_csrf=" + csrfToken;
+    sendAjax('POST', '/changeGamePrivacy', data, function () {
+      handleSuccess("Game privacy successfully changed!");
+      renderProfile();
+    });
+  });
 };
 
 //Handle an error sent from the server
@@ -2225,7 +2329,6 @@ var renderPublicResults = function renderPublicResults() {
 
 //Handle game results sent from the server
 var renderPublicGameList = function renderPublicGameList(games) {
-  console.log(games);
   ReactDOM.render(React.createElement(PublicGameList, { games: games }), document.querySelector("#publicGameResults"));
 };
 
@@ -3713,7 +3816,9 @@ var handleSuccess = function handleSuccess(message, hide) {
     handleError("", true);
   }
 
-  hideModal();
+  if (window.hideModal) {
+    hideModal();
+  }
 
   var msg = message;
 
@@ -3740,7 +3845,9 @@ var handleError = function handleError(message, hide) {
     handleSuccess("", true);
   }
 
-  hideModal();
+  if (window.hideModal) {
+    hideModal();
+  }
 
   var msg = message;
 

@@ -55,6 +55,8 @@ const saveGame = (roomId, gameState, metaData, callback) => {
   const gameData = {
     player1Id: player1.handshake.session.account._id,
     player2Id: player2.handshake.session.account._id,
+    player1Privacy: player1.handshake.session.account.privacy,
+    player2Privacy: player2.handshake.session.account.privacy,
     player1Score: gameState.player1Points,
     player2Score: gameState.player2Points,
     winner: gameState.winner,

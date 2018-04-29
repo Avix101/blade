@@ -30,6 +30,14 @@ const GameResultSchema = new mongoose.Schema({
     min: 0,
     max: 1000,
   },
+  player1Privacy: {
+    type: Boolean,
+    required: true,
+  },
+  player2Privacy: {
+    type: Boolean,
+    required: true,
+  },
   meta: {
     type: Object,
     required: true,
@@ -56,6 +64,7 @@ GameResultSchema.statics.findAllGamesFor = (id, callback) => {
 GameResultSchema.statics.searchForGames = (id, startDate, endDate, limit, callback) => {
   const search = {};
 
+  // Include an id to search for if requested
   if (id) {
     search.$or = [
       { player1Id: id },
@@ -63,12 +72,17 @@ GameResultSchema.statics.searchForGames = (id, startDate, endDate, limit, callba
     ];
   }
 
+  // Include a start and end date if specified
   if (startDate && endDate) {
     search.createdDate = {
       $gte: startDate.toISOString(),
       $lte: endDate.toISOString(),
     };
   }
+
+  // Return public games only
+  search.player1Privacy = false;
+  search.player2Privacy = false;
 
   GameResultModel.find(search, callback).sort({ createdDate: -1 }).limit(limit);
 };

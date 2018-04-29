@@ -347,7 +347,9 @@ var handleSuccess = function handleSuccess(message, hide) {
     handleError("", true);
   }
 
-  hideModal();
+  if (window.hideModal) {
+    hideModal();
+  }
 
   var msg = message;
 
@@ -374,7 +376,9 @@ var handleError = function handleError(message, hide) {
     handleSuccess("", true);
   }
 
-  hideModal();
+  if (window.hideModal) {
+    hideModal();
+  }
 
   var msg = message;
 

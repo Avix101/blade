@@ -100,7 +100,9 @@ const handleSuccess = (message, hide) => {
     handleError("", true);
   }
   
-  hideModal();
+  if(window.hideModal){  
+    hideModal();
+  }
   
   let msg = message;
   
@@ -130,7 +132,10 @@ const handleError = (message, hide) => {
     handleSuccess("", true);
   }
   
-  hideModal();
+  if(window.hideModal){
+    hideModal();
+  }
+  
   
   let msg = message;
   
