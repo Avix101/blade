@@ -115,7 +115,10 @@ const drawTurnIndicator = () => {
   //Depending on the gamestate, draw instructions to the screen for the player
   switch(gameState.turnType){
     case "playCard":
-      if(playerTurn){
+      if(blastSelect){
+        prepCtx.fillStyle = "lightgreen";
+        prepCtx.fillText("Select one of your opponent's cards to blast!", x, y);
+      } else if(playerTurn){
         prepCtx.fillStyle = "cyan";
         prepCtx.fillText("Your turn, select a card from your hand!", x, y);
       } else {
@@ -193,6 +196,11 @@ const drawPlayerProfiles = () => {
   
   //Draw the profile and write their username below it
   if(playerProfile){
+    
+    if(prepCtx.measureText(playerProfile.username).width > 350){
+      prepCtx.font = "18pt Fira Sans, sans-serif";
+    }
+    
     prepCtx.drawImage(
       playerProfile.charImage, 
       25, 
@@ -204,7 +212,15 @@ const drawPlayerProfiles = () => {
     prepCtx.fillText(playerProfile.username, 153, 1020);
   }
   
+  //Reset font in case it was changed
+  prepCtx.font = "32pt Fira Sans, sans-serif";
+  
   if(opponentProfile){
+    
+    if(prepCtx.measureText(opponentProfile.username).width > 350){
+      prepCtx.font = "18pt Fira Sans, sans-serif";
+    }
+    
     prepCtx.drawImage(
       opponentProfile.charImage,
       25,

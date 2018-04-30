@@ -15,7 +15,7 @@ const AccountSchema = new mongoose.Schema({
     required: true,
     trim: true,
     unique: true,
-    match: /^[A-Za-z0-9_\-.]{1,32}$/,
+    match: /^[A-Za-z0-9_\-.]{1,22}$/,
   },
   reddit_id: {
     type: String,

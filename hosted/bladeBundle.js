@@ -235,6 +235,112 @@ var Card = function () {
 }();
 "use strict";
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//An effect object holds info about an effect and its current state
+var Effect = function () {
+  function Effect(image, location, frameDetails) {
+    _classCallCheck(this, Effect);
+
+    this.image = image;
+    this.x = location.x;
+    this.y = location.y;
+    this.frame = 0;
+    this.frameWidth = frameDetails.width;
+    this.frameHeight = frameDetails.height;
+    this.animation = null;
+    this.animCallback = null;
+    this.opacity = 1;
+    this.radians = 0;
+    this.hueRotate = 0;
+  }
+
+  //Animations can be bound to an effect, in which case the effect will animate when updated
+
+
+  _createClass(Effect, [{
+    key: "bindAnimation",
+    value: function bindAnimation(animation, callback, seal) {
+
+      if (seal) {
+        this.sealed = seal;
+      }
+
+      //Start the animation at the time of bind
+      this.animation = animation;
+      this.animation.bind(new Date().getTime());
+
+      //If the animation comes with a callback, set the callback
+      if (callback) {
+        this.animCallback = callback;
+      } else {
+        this.animCallback = null;
+      }
+    }
+  }, {
+    key: "cancelAnimation",
+
+
+    //Cancel an effect's animation
+    value: function cancelAnimation() {
+      delete this.animation;
+      this.animation = null;
+    }
+  }, {
+    key: "endAnimation",
+
+
+    //End the effect's animation (same as cancel, but calls the animation callback)
+    value: function endAnimation() {
+      this.cancelAnimation();
+      if (this.animCallback) {
+        this.animCallback(this);
+      }
+    }
+  }, {
+    key: "readyToAnimate",
+
+
+    //Determine if the effect is ready to animate
+    value: function readyToAnimate() {
+      return this.animation === null;
+    }
+  }, {
+    key: "flipImage",
+
+
+    //Visually flip the effect 180 degrees
+    value: function flipImage() {
+      this.radians = (this.radians + Math.PI) % (2 * Math.PI);
+    }
+
+    //Update the effect based on its current animation
+
+  }, {
+    key: "update",
+    value: function update(currentTime) {
+      if (this.animation) {
+        //Update the animation and copy over the new values
+        this.animation.update(currentTime);
+        this.animation.copyVals(this);
+
+        if (this.animation.complete) {
+          this.endAnimation();
+          return true;
+        }
+
+        return this.animation.ready();
+      }
+      return this.animation !== null;
+    }
+  }]);
+
+  return Effect;
+}();
+"use strict";
+
 var cardImageStruct = {};
 
 //Interpolate between two values given a ratio between 0 and 1
@@ -336,7 +442,10 @@ var drawTurnIndicator = function drawTurnIndicator() {
   //Depending on the gamestate, draw instructions to the screen for the player
   switch (gameState.turnType) {
     case "playCard":
-      if (playerTurn) {
+      if (blastSelect) {
+        prepCtx.fillStyle = "lightgreen";
+        prepCtx.fillText("Select one of your opponent's cards to blast!", x, y);
+      } else if (playerTurn) {
         prepCtx.fillStyle = "cyan";
         prepCtx.fillText("Your turn, select a card from your hand!", x, y);
       } else {
@@ -414,12 +523,25 @@ var drawPlayerProfiles = function drawPlayerProfiles() {
 
   //Draw the profile and write their username below it
   if (playerProfile) {
+
+    if (prepCtx.measureText(playerProfile.username).width > 350) {
+      prepCtx.font = "18pt Fira Sans, sans-serif";
+    }
+
     prepCtx.drawImage(playerProfile.charImage, 25, 750, 256, 256);
 
     prepCtx.fillText(playerProfile.username, 153, 1020);
   }
 
+  //Reset font in case it was changed
+  prepCtx.font = "32pt Fira Sans, sans-serif";
+
   if (opponentProfile) {
+
+    if (prepCtx.measureText(opponentProfile.username).width > 350) {
+      prepCtx.font = "18pt Fira Sans, sans-serif";
+    }
+
     prepCtx.drawImage(opponentProfile.charImage, 25, -10, 256, 256);
 
     prepCtx.fillText(opponentProfile.username, 153, 260);
