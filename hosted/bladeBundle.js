@@ -1867,38 +1867,38 @@ var PublicGameList = function PublicGameList(props) {
     if (numGamesLeft <= 10) {
       gameSet = games.slice(i);
     } else {
-      gameSet = games.slice(i, 10);
+      gameSet = games.slice(i, i + 10);
     }
 
     //If it's the first set, make it visible. Otherwise, hide the set
     if (i == 0) {
       gameLists.push(React.createElement(
         "ul",
-        { id: "gameSet" + i, className: "list-group" },
+        { id: "gameSet" + gameLists.length, className: "list-group" },
         gameSet
       ));
       paginationTabs.push(React.createElement(
         "li",
-        { id: "gameLink" + i, className: "page-item active" },
+        { id: "gameLink" + paginationTabs.length, className: "page-item active" },
         React.createElement(
           "button",
-          { className: "page-link", "data-set": i, onClick: changePublicGameSet },
-          i + 1
+          { className: "page-link", "data-set": paginationTabs.length, onClick: changePublicGameSet },
+          paginationTabs.length + 1
         )
       ));
     } else {
       gameLists.push(React.createElement(
         "ul",
-        { id: "gameSet" + i, className: "list-group hidden" },
+        { id: "gameSet" + gameLists.length, className: "list-group hidden" },
         gameSet
       ));
       paginationTabs.push(React.createElement(
         "li",
-        { id: "gameLink" + i, className: "page-item" },
+        { id: "gameLink" + paginationTabs.length, className: "page-item" },
         React.createElement(
           "button",
-          { className: "page-link", "data-set": i, onClick: changePublicGameSet },
-          i + 1
+          { className: "page-link", "data-set": paginationTabs.length, onClick: changePublicGameSet },
+          paginationTabs.length + 1
         )
       ));
     }
@@ -1921,7 +1921,7 @@ var PublicGameList = function PublicGameList(props) {
     ),
     React.createElement(
       "div",
-      { id: "gameHistoryList" },
+      { id: "publicGameHistoryList" },
       gameLists
     ),
     React.createElement(

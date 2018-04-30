@@ -771,30 +771,30 @@ const PublicGameList = (props) => {
     if(numGamesLeft <= 10){
       gameSet = games.slice(i);
     } else {
-      gameSet = games.slice(i, 10);
+      gameSet = games.slice(i, i + 10);
     }
     
     //If it's the first set, make it visible. Otherwise, hide the set
     if(i == 0){
       gameLists.push(
-        <ul id={`gameSet${i}`} className="list-group">
+        <ul id={`gameSet${gameLists.length}`} className="list-group">
           {gameSet}
         </ul>
       );
       paginationTabs.push(
-        <li id={`gameLink${i}`} className="page-item active">
-          <button className="page-link" data-set={i} onClick={changePublicGameSet}>{i + 1}</button>
+        <li id={`gameLink${paginationTabs.length}`} className="page-item active">
+          <button className="page-link" data-set={paginationTabs.length} onClick={changePublicGameSet}>{paginationTabs.length + 1}</button>
         </li>
       );
     } else {
       gameLists.push(
-        <ul id={`gameSet${i}`} className="list-group hidden">
+        <ul id={`gameSet${gameLists.length}`} className="list-group hidden">
           {gameSet}
         </ul>
       );
       paginationTabs.push(
-        <li id={`gameLink${i}`} className="page-item">
-          <button className="page-link" data-set={i} onClick={changePublicGameSet}>{i + 1}</button>
+        <li id={`gameLink${paginationTabs.length}`} className="page-item">
+          <button className="page-link" data-set={paginationTabs.length} onClick={changePublicGameSet}>{paginationTabs.length + 1}</button>
         </li>
       );
     }
@@ -805,7 +805,7 @@ const PublicGameList = (props) => {
     <div>
       <p className="lead">Sorted by most recent to least recent:</p>
       <p className="lead"># of Results: {games.length}</p>
-      <div id="gameHistoryList">
+      <div id="publicGameHistoryList">
         {gameLists}
       </div>
       <div className="flexCenter">
