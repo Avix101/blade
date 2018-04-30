@@ -51,36 +51,42 @@ const saveGame = (roomId, gameState, metaData, callback) => {
     return;
   }
 
-  // Build a game data object, pass to mongo
-  const gameData = {
-    player1Id: player1.handshake.session.account._id,
-    player2Id: player2.handshake.session.account._id,
-    player1Privacy: player1.handshake.session.account.privacy,
-    player2Privacy: player2.handshake.session.account.privacy,
-    player1Score: gameState.player1Points,
-    player2Score: gameState.player2Points,
-    winner: gameState.winner,
-    meta: metaData,
-  };
 
-  const newGameResult = new GameResult.GameResultModel(gameData);
+  // Update both socket sessions (to make sure privacy settings are correct) before saving
+  player1.handshake.session.reload(() => {
+    player2.handshake.session.reload(() => {
+      // Build a game data object, pass to mongo
+      const gameData = {
+        player1Id: player1.handshake.session.account._id,
+        player2Id: player2.handshake.session.account._id,
+        player1Privacy: player1.handshake.session.account.privacy,
+        player2Privacy: player2.handshake.session.account.privacy,
+        player1Score: gameState.player1Points,
+        player2Score: gameState.player2Points,
+        winner: gameState.winner,
+        meta: metaData,
+      };
 
-  const savePromise = newGameResult.save();
+      const newGameResult = new GameResult.GameResultModel(gameData);
 
-  // Alert users that data was saved (or not saved)
-  savePromise.then(() => {
-    socket1.emit('gamedata', { saved: true });
-    socket2.emit('gamedata', { saved: true });
+      const savePromise = newGameResult.save();
+
+      // Alert users that data was saved (or not saved)
+      savePromise.then(() => {
+        socket1.emit('gamedata', { saved: true });
+        socket2.emit('gamedata', { saved: true });
+      });
+
+      savePromise.catch(() => {
+        socket1.emit('gamedata', { saved: false });
+        socket2.emit('gamedata', { saved: false });
+      });
+
+      if (callback) {
+        callback();
+      }
+    });
   });
-
-  savePromise.catch(() => {
-    socket1.emit('gamedata', { saved: false });
-    socket2.emit('gamedata', { saved: false });
-  });
-
-  if (callback) {
-    callback();
-  }
 };
 
 // Attach custom functions to sockets
@@ -112,7 +118,13 @@ const init = (ioInstance) => {
     socket.on('createRoom', () => {
       if (roomHandler.createRoom(socket.hash)) {
         if (roomHandler.joinRoom(socket.hash, socket)) {
-          socket.emit('roomJoined', { room: socket.hash, status: roomHandler.getPlayerStatus(socket.hash, socket) });
+          // Update socket session!!
+          socket.handshake.session.reload(() => {
+            socket.emit('roomJoined', {
+              room: socket.hash,
+              status: roomHandler.getPlayerStatus(socket.hash, socket),
+            });
+          });
         }
       }
     });
@@ -122,25 +134,28 @@ const init = (ioInstance) => {
       if (roomHandler.joinRoom(data.room, socket)) {
         socket.emit('roomJoined', { room: data.room, status: roomHandler.getPlayerStatus(data.room, socket) });
         if (roomHandler.getPlayerCount(data.room) === 2) {
-          blade.beginGame(data.room, () => {
-            const sockets = roomHandler.getSockets(data.room);
-            const socket1Status = roomHandler.getPlayerStatus(sockets[0].roomJoined, sockets[0]);
-            const socket2Status = roomHandler.getPlayerStatus(sockets[1].roomJoined, sockets[1]);
-            sockets[0].emit(
-              'setDeck',
-              blade.getDeck(sockets[0].roomJoined, socket1Status),
-            );
-            sockets[1].emit(
-              'setDeck',
-              blade.getDeck(sockets[1].roomJoined, socket2Status),
-            );
-            const gameState = blade.getGameState(socket.roomJoined);
-            io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
+          // Update socket session!!
+          socket.handshake.session.reload(() => {
+            blade.beginGame(data.room, () => {
+              const sockets = roomHandler.getSockets(data.room);
+              const socket1Status = roomHandler.getPlayerStatus(sockets[0].roomJoined, sockets[0]);
+              const socket2Status = roomHandler.getPlayerStatus(sockets[1].roomJoined, sockets[1]);
+              sockets[0].emit(
+                'setDeck',
+                blade.getDeck(sockets[0].roomJoined, socket1Status),
+              );
+              sockets[1].emit(
+                'setDeck',
+                blade.getDeck(sockets[1].roomJoined, socket2Status),
+              );
+              const gameState = blade.getGameState(socket.roomJoined);
+              io.sockets.in(socket.roomJoined).emit('gamestate', gameState);
 
-            io.sockets.in(socket.roomJoined).emit(
-              'playerInfo',
-              roomHandler.getProfileData(socket.roomJoined),
-            );
+              io.sockets.in(socket.roomJoined).emit(
+                'playerInfo',
+                roomHandler.getProfileData(socket.roomJoined),
+              );
+            });
           });
         }
       }
