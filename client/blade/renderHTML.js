@@ -1,7 +1,15 @@
 //Construct the main game window (the canvas)
 const GameWindow = (props) => {
   return (
-    <canvas id="viewport" width={props.width} height={props.height}></canvas>
+    <div>
+      <canvas id="viewport" width={props.width} height={props.height}></canvas>
+      <div className="text-center">
+        <button onClick={goFullscreen} id="fullscreenButton" className="btn btn-lg btn-primary moveDown">Go Fullscreen</button>
+        <button onClick={exitFullscreen} 
+          id="exitFullscreenButton" className="hidden fullscreenButton btn btn-lg btn-danger">Exit Fullscreen
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -27,7 +35,38 @@ const MusicAndChatWindow = (props) => {
       </div>
     </div>
   );
-}
+};
+
+//Exit fullscreen
+const exitFullscreen = () => {
+  const viewport = document.querySelector("#viewport");
+  const fullscreenButton = document.querySelector("#fullscreenButton");
+  const exitFullscreenButton = document.querySelector("#exitFullscreenButton");
+  
+  if(viewport){
+    viewport.classList.remove("fullscreen");
+    const dimensions = calcDisplayDimensions();
+    viewport.width = dimensions.width;
+    viewport.height = dimensions.height;
+    fullscreenButton.classList.remove("hidden");
+    exitFullscreenButton.classList.add("hidden");
+  }
+};
+
+//Enable fullscreen for gameplay
+const goFullscreen = () => {
+  const viewport = document.querySelector("#viewport");
+  const fullscreenButton = document.querySelector("#fullscreenButton");
+  const exitFullscreenButton = document.querySelector("#exitFullscreenButton");
+  
+  if(viewport){
+    viewport.width = window.innerWidth;
+    viewport.height = window.innerHeight;
+    viewport.classList.add("fullscreen");
+    fullscreenButton.classList.add("hidden");
+    exitFullscreenButton.classList.remove("hidden");
+  }
+};
 
 //Render the right panel
 const renderRightPanel = () => {

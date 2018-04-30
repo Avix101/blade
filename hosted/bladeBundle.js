@@ -561,6 +561,7 @@ var calcDisplayDimensions = function calcDisplayDimensions() {
 
 //Resize the display canvas if its currently onscreen
 var resizeGame = function resizeGame(e) {
+  exitFullscreen();
   if (pageView === "#blade") {
     var dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
@@ -670,7 +671,26 @@ window.addEventListener('hashchange', loadView);
 
 //Construct the main game window (the canvas)
 var GameWindow = function GameWindow(props) {
-  return React.createElement("canvas", { id: "viewport", width: props.width, height: props.height });
+  return React.createElement(
+    "div",
+    null,
+    React.createElement("canvas", { id: "viewport", width: props.width, height: props.height }),
+    React.createElement(
+      "div",
+      { className: "text-center" },
+      React.createElement(
+        "button",
+        { onClick: goFullscreen, id: "fullscreenButton", className: "btn btn-lg btn-primary moveDown" },
+        "Go Fullscreen"
+      ),
+      React.createElement(
+        "button",
+        { onClick: exitFullscreen,
+          id: "exitFullscreenButton", className: "hidden fullscreenButton btn btn-lg btn-danger" },
+        "Exit Fullscreen"
+      )
+    )
+  );
 };
 
 //Construct the right panel which holds a Youtube iframe and a chat box
@@ -709,6 +729,37 @@ var MusicAndChatWindow = function MusicAndChatWindow(props) {
       )
     )
   );
+};
+
+//Exit fullscreen
+var exitFullscreen = function exitFullscreen() {
+  var viewport = document.querySelector("#viewport");
+  var fullscreenButton = document.querySelector("#fullscreenButton");
+  var exitFullscreenButton = document.querySelector("#exitFullscreenButton");
+
+  if (viewport) {
+    viewport.classList.remove("fullscreen");
+    var dimensions = calcDisplayDimensions();
+    viewport.width = dimensions.width;
+    viewport.height = dimensions.height;
+    fullscreenButton.classList.remove("hidden");
+    exitFullscreenButton.classList.add("hidden");
+  }
+};
+
+//Enable fullscreen for gameplay
+var goFullscreen = function goFullscreen() {
+  var viewport = document.querySelector("#viewport");
+  var fullscreenButton = document.querySelector("#fullscreenButton");
+  var exitFullscreenButton = document.querySelector("#exitFullscreenButton");
+
+  if (viewport) {
+    viewport.width = window.innerWidth;
+    viewport.height = window.innerHeight;
+    viewport.classList.add("fullscreen");
+    fullscreenButton.classList.add("hidden");
+    exitFullscreenButton.classList.remove("hidden");
+  }
 };
 
 //Render the right panel

@@ -59,6 +59,21 @@ body, html {
   margin-top: 50px;
 }
 
+.fullscreen {
+  position: fixed;
+  z-index: 1000;
+  top: 0px;
+  left: 0px;
+}
+
+.fullscreenButton {
+  position: fixed;
+  left: 50%;
+  transform: translate(-50%, 0%);
+  bottom: 0px;
+  z-index: 1001;
+}
+
 .instructionsCard img{
   width: 90px;
   height: 119px;

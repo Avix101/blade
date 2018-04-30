@@ -55,6 +55,7 @@ const calcDisplayDimensions = () => {
 
 //Resize the display canvas if its currently onscreen
 const resizeGame = (e) => {
+  exitFullscreen();
   if(pageView === "#blade"){
     const dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
@@ -63,7 +64,7 @@ const resizeGame = (e) => {
     && document.querySelector("#modalContainer div").classList.contains("show")){
       renderPlayback(true);
   }
-}
+};
 
 //Load the requested view
 const loadView = () => {
