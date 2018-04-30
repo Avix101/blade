@@ -94,12 +94,16 @@ const redditAuth = (req, res) => {
           return res.redirect('/blade');
         }
 
+        // Password and salt data for reddit accounts will never be utilized
+        const randomPassword = crypto.randomBytes(30).toString('hex');
+        const randomSalt = crypto.randomBytes(30).toString('hex');
+
         // Create a new account if one doesn't exist
         const accountData = {
           username,
           reddit_id: id,
-          salt: 'unknown',
-          password: 'unknown',
+          salt: randomSalt,
+          password: randomPassword,
           profile_name: 'alfin',
         };
 
