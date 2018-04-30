@@ -29,6 +29,8 @@ var handleGuestLogin = function handleGuestLogin(e) {
 var handleRedditLogin = function handleRedditLogin(e) {
   e.preventDefault();
 
+  sendAjax('GET', $("#redditLoginForm").attr("action"), null, redirect);
+
   return false;
 };
 
@@ -154,7 +156,7 @@ var LoginWindow = function LoginWindow(props) {
               React.createElement(
                 "button",
                 { id: "redditLoginButton", className: "formSubmit btn btn-lg btn-danger", type: "submit" },
-                "Login w/ Reddit ",
+                "Login w/ reddit ",
                 React.createElement("span", { className: "fab fa-reddit-alien" })
               )
             ),

@@ -24,6 +24,8 @@ const attach = (app) => {
   app.get('/getToken', mid.requiresSecure, controllers.Account.getToken);
   app.get('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.loginPage);
   app.get('/guestLogin', mid.requiresSecure, mid.requiresLogout, controllers.Account.guestLogin);
+  app.get('/redditLogin', mid.requiresSecure, mid.requiresLogout, controllers.Account.redditLogin);
+  app.get('/auth/reddit', mid.requiresSecure, mid.requiresLogout, controllers.Account.redditAuth);
   app.post('/login', mid.requiresSecure, mid.requiresLogout, controllers.Account.login);
   app.post('/signup', mid.requiresSecure, mid.requiresLogout, controllers.Account.signup);
   app.post('/changePassword', mid.requiresNonGuestLogin, controllers.Account.updatePassword);

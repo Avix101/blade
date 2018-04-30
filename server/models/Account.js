@@ -15,7 +15,12 @@ const AccountSchema = new mongoose.Schema({
     required: true,
     trim: true,
     unique: true,
-    match: /^[A-Za-z0-9_\-.]{1,16}$/,
+    match: /^[A-Za-z0-9_\-.]{1,32}$/,
+  },
+  reddit_id: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
   salt: {
     type: Buffer,
@@ -63,6 +68,15 @@ const validatePassword = (doc, password, callback) => {
 AccountSchema.statics.findByUsername = (name, callback) => {
   const search = {
     username: name,
+  };
+
+  return AccountModel.findOne(search, callback);
+};
+
+// Find an account by the user's reddit id
+AccountSchema.statics.findByRedditId = (id, callback) => {
+  const search = {
+    reddit_id: id,
   };
 
   return AccountModel.findOne(search, callback);

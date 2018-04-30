@@ -27,6 +27,8 @@ const handleGuestLogin = (e) => {
 const handleRedditLogin = (e) => {
   e.preventDefault();
   
+  sendAjax('GET', $("#redditLoginForm").attr("action"), null, redirect);
+  
   return false;
 };
 
@@ -97,7 +99,7 @@ const LoginWindow = (props) => {
               <div className="col-sm-2"></div>
               <div className="col-sm-8 col-centered">
                 <button id="redditLoginButton" className="formSubmit btn btn-lg btn-danger" type="submit">
-                  Login w/ Reddit <span className="fab fa-reddit-alien"></span>
+                  Login w/ reddit <span className="fab fa-reddit-alien"></span>
                 </button>
               </div>
               <div className="col-sm-2"></div>

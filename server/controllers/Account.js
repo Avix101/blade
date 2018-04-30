@@ -4,6 +4,18 @@ const profilePics = require('./profiles.js');
 const { Account } = models;
 let guestNumber = 1;
 
+// Import and setup Reddit Oauth
+const RedditApi = require('reddit-oauth');
+
+const reddit = new RedditApi({
+  app_id: process.env.REDDIT_APP_ID,
+  app_secret: process.env.REDDIT_APP_SECRET,
+  redirect_uri: process.env.REDDIT_REDIRECT_URI,
+});
+
+// Crypto library for the random bytes
+const crypto = require('crypto');
+
 // Render the login page and send a csrf token
 const loginPage = (req, res) => {
   res.render('login', { csrfToken: req.csrfToken() });
@@ -40,6 +52,73 @@ const login = (request, response) => {
   });
 };
 
+// Start the login process for a reddit user
+const redditLogin = (req, res) => {
+  // Grab a redirect uri for the user to authenticate with (reddit-side)
+  const randomState = crypto.randomBytes(32).toString('hex');
+  const redirectUri = reddit.oAuthUrl(randomState, 'identity');
+
+  // Store the user's state for when the auth completes
+  req.session.redditState = randomState;
+
+  // If the redirect uri was generated, redirect the user
+  if (redirectUri) {
+    return res.status(200).json({ redirect: redirectUri });
+  }
+
+  // Alert the user if the login attempt failed
+  return res.status(400).json({ error: 'reddit login attempt failed' });
+};
+
+// Grab the auth back from reddit and exchange it for an access and refresh token
+const redditAuth = (req, res) => {
+  reddit.oAuthTokens(req.session.redditState, req.query, () => {
+    reddit.get('/api/v1/me', {}, (err, response, data) => {
+      if (err) {
+        return res.status(400).json({ error: 'reddit login attempt failed' });
+      }
+
+      const body = JSON.parse(data);
+      const username = `r_${body.name}`;
+      const id = `${body.id}`;
+
+      // Attempt to find the account by its reddit id
+      return Account.AccountModel.findByRedditId(id, (er2, account) => {
+        if (er2) {
+          return res.status(400).json({ error: 'reddit login attempt failed' });
+        }
+
+        // If the account exists, use it
+        if (account) {
+          req.session.account = Account.AccountModel.toAPI(account);
+          return res.redirect('/blade');
+        }
+
+        // Create a new account if one doesn't exist
+        const accountData = {
+          username,
+          reddit_id: id,
+          salt: 'unknown',
+          password: 'unknown',
+          profile_name: 'alfin',
+        };
+
+        const newAccount = new Account.AccountModel(accountData);
+        const savePromise = newAccount.save();
+
+        savePromise.then(() => {
+          req.session.account = Account.AccountModel.toAPI(newAccount);
+          res.redirect('/blade');
+        });
+
+        return savePromise.catch(() => {
+          res.status(500).json({ error: 'An error occured' });
+        });
+      });
+    });
+  });
+};
+
 // Login a user as a guest
 const guestLogin = (req, res) => {
   Account.AccountModel.findByUsername('Guest', (err, account) => {
@@ -70,6 +149,10 @@ const signup = (request, response) => {
 
   if (!req.body.username || !req.body.pass || !req.body.pass2) {
     return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (req.body.username.charAt(0) === 'r' && req.body.username.charAt(1) === '_') {
+    return res.status(400).json({ error: 'r_ usernames are reserved for reddit users' });
   }
 
   if (req.body.pass !== req.body.pass2) {
@@ -226,6 +309,8 @@ module.exports = {
   loginPage,
   login,
   guestLogin,
+  redditLogin,
+  redditAuth,
   logout,
   signup,
   updatePassword,
