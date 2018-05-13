@@ -110,7 +110,7 @@ const checkRateLimiter = () => {
       }
     }
   }
-	
+
   requestCounter = {};
 };
 
@@ -125,8 +125,8 @@ const init = (ioInstance) => {
 
   io.on('connection', (sock) => {
     const socket = sock;
-		
-		// General rate limiter for sockets
+
+    // General rate limiter for sockets
     socket.use((packet, next) => {
       if (!requestCounter[socket.id]) {
         requestCounter[socket.id] = 1;
