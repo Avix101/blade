@@ -89,12 +89,52 @@ const saveGame = (roomId, gameState, metaData, callback) => {
   });
 };
 
+// Limits for sockets
+const DDOS = 1000;
+
+// Keeps track of # of socket requests
+let requestCounter = {};
+
+// Checks and clears the rate limiter every 1000ms
+const checkRateLimiter = () => {
+  const socketKeys = Object.keys(requestCounter);
+  for (let i = 0; i < socketKeys.length; i++) {
+    const key = socketKeys[i];
+    if (requestCounter[key] > DDOS) {
+      if (io.sockets.connected[key]) {
+        io.sockets.connected[key].emit('errorMessage', {
+          error:
+          'Rate limiter activated: Call limit exceeded. Connection to server broken.',
+        });
+        io.sockets.connected[key].disconnect();
+      }
+    }
+  }
+	
+  requestCounter = {};
+};
+
+// Run check every second
+setInterval(() => {
+  checkRateLimiter();
+}, 1000);
+
 // Attach custom functions to sockets
 const init = (ioInstance) => {
   io = ioInstance;
 
   io.on('connection', (sock) => {
     const socket = sock;
+		
+		// General rate limiter for sockets
+    socket.use((packet, next) => {
+      if (!requestCounter[socket.id]) {
+        requestCounter[socket.id] = 1;
+      } else {
+        requestCounter[socket.id]++;
+      }
+      next();
+    });
 
     // Create a new hash for the connected client
     const time = new Date().getTime();

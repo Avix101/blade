@@ -56,6 +56,14 @@ const app = express();
 
 // Configure application
 app.disable('x-powered-by');
+
+//Attach custom x-powered-by middleware just for fun
+app.use((req, res, next) => {
+	res.setHeader('X-Powered-By', 'Orbal Energy');
+	
+	next();
+});
+
 app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
 
