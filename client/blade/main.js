@@ -46,7 +46,7 @@ const aspectRatio = 16 / 9;
 const calcDisplayDimensions = () => {
   const width = window.innerWidth * 0.6;
   const height = width / aspectRatio;
-  
+
   return {
     width,
     height,
@@ -59,7 +59,7 @@ const resizeGame = (e) => {
   if(pageView === "#blade"){
     const dimensions = calcDisplayDimensions();
     renderGame(dimensions.width, dimensions.height);
-  } else if(viewport 
+  } else if(viewport
     && document.querySelector("#modalContainer div")
     && document.querySelector("#modalContainer div").classList.contains("show")){
       renderPlayback(true);
@@ -71,10 +71,10 @@ const loadView = () => {
   //Find the page's hash
   const hash = window.location.hash;
   pageView = hash;
-  
+
   //Always render the right panel (regardless of view)
   renderRightPanel();
-  
+
   //Depending on the hash, render the main content
   switch(hash){
     case "#blade": {
@@ -102,6 +102,10 @@ const loadView = () => {
       renderProfile();
       break;
     }
+    case "#disclaimer": {
+      renderDisclaimerWindow();
+      break;
+    }
     default: {
       const dimensions = calcDisplayDimensions();
       renderGame(dimensions.width, dimensions.height);
@@ -113,22 +117,22 @@ const loadView = () => {
 
 //Run this function when the page loads
 const init = () => {
-  
+
   //Load the requested view
   loadView();
-  
+
   //Grab static images included in client download
   bladeMat = document.querySelector("#bladeMat");
-  
+
   //Construct the prep canvas (for building frames)
   prepCanvas = document.createElement('canvas');
   prepCanvas.width = "1920";
   prepCanvas.height = "1080";
   prepCtx = prepCanvas.getContext('2d');
-  
+
   //Connect to the server via sockets
   socket = io.connect();
-  
+
   //Attach custom socket events
   socket.on('loadBladeCards', loadBladeCards);
   socket.on('roomOptions', roomOptions);
@@ -144,7 +148,7 @@ const init = () => {
   socket.on('gamedata', notifyGameData);
   socket.on('playbackData', processPlaybackData);
   socket.on('errorMessage', processError);
-  
+
   //Start the update loop!
   animationFrame = requestAnimationFrame(update);
   addToChat("You have joined the lobby");

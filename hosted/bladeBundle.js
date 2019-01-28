@@ -603,6 +603,8 @@ var draw = function draw() {
     drawWaitingOverlay("Press Start to Begin Playback");
   } else if (!inRoom && gameState.turnType !== "end") {
     drawWaitingOverlay("Please create or join a game...");
+  } else if (gameState.turnType === "begin") {
+    drawWaitingOverlay("Waiting for an opponent to join...");
   } else {
     drawScore(getPlayerPoints(), getOpponentPoints());
 
@@ -732,6 +734,11 @@ var loadView = function loadView() {
     case "#profile":
       {
         renderProfile();
+        break;
+      }
+    case "#disclaimer":
+      {
+        renderDisclaimerWindow();
         break;
       }
     default:
@@ -1132,7 +1139,7 @@ var InstructionsWindow = function InstructionsWindow(props) {
       React.createElement(
         "p",
         { className: "lead" },
-        "Want to know how to play Blade? Well, let me help!"
+        "Want to know how to play Blade? Of course you do!"
       ),
       React.createElement("hr", { className: "my-4" }),
       React.createElement(
@@ -1268,7 +1275,7 @@ var AboutWindow = function AboutWindow(props) {
       React.createElement(
         "p",
         { className: "lead" },
-        "Check out the original games!"
+        "Check out the games!"
       ),
       React.createElement("hr", { className: "my-4" }),
       React.createElement(
@@ -1280,12 +1287,12 @@ var AboutWindow = function AboutWindow(props) {
       React.createElement(
         "p",
         { className: "lead aboutPara" },
-        "Trails of Cold Steel is a Japanese RPG made by Falcom, and published by XSEED in the US. The first ToCS is the 6th entry in the 'Trails' or 'Kiseki' saga which is part of an even larger series titled \"The Legend of Heroes\". Blade is a recreation of a minigame found in ToCS."
+        "Trails of Cold Steel is a Japanese RPG made by Falcom. The first ToCS is the 6th entry in the 'Trails' or 'Kiseki' saga. If you're into high quality story-based RPGs look no further! Blade, the game recreated on this site, is actually a minigame found in ToCS."
       ),
       React.createElement(
         "p",
         { className: "lead aboutPara" },
-        "To find out more about the original game and how to purchase a copy for yourself, please visit its Steam store page."
+        "To find out more about the game and how to purchase a copy for yourself, please visit its Steam store page."
       ),
       React.createElement(
         "div",
@@ -1310,12 +1317,12 @@ var AboutWindow = function AboutWindow(props) {
       React.createElement(
         "p",
         { className: "lead aboutPara" },
-        "The second entry in the Cold Steel arc of the Trails series picks up where the first one left off. It is highly recommended that the games are played in order. Blade exists in both games, but the 'Blast' and 'Force' cards were introduced in ToCS II."
+        "Because the series follows an overarching story and also because it's typically better to play games in the intended release order, definitly check out ToCS II after ToCS I. Blade exists in both games, but the 'Blast' and 'Force' cards were introduced in ToCS II."
       ),
       React.createElement(
         "p",
         { className: "lead aboutPara" },
-        "If you're ready to learn more about the second Trails of Cold Steel game, please visit the Steam store page. Be aware that the page contains spoilers for the first game."
+        "If you're ready to learn more about the second Trails of Cold Steel game, please visit the Steam store page. It might be obvious, but the page contains spoilers for the first game."
       ),
       React.createElement(
         "div",
@@ -1874,6 +1881,47 @@ var GameHistory = function GameHistory(props) {
   );
 };
 
+var DisclaimerWindow = function DisclaimerWindow(props) {
+  return React.createElement(
+    "div",
+    { className: "container" },
+    React.createElement(
+      "div",
+      { className: "jumbotron" },
+      React.createElement(
+        "h1",
+        { className: "display-3" },
+        "Site Disclaimer:"
+      ),
+      React.createElement("hr", { className: "my-4" }),
+      React.createElement(
+        "ol",
+        null,
+        React.createElement(
+          "li",
+          null,
+          "As per the signup warning, you have agreed to not use a sensitive password for your account on this site. I don't plan on any breaches, but it's also your responsibility to be careful with your sensitive passwords."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "I do not claim ownership of the the art assets used on this site. Profile icons, site favicon, and card assets were taken from ToCS I & II and therefore do not belong to me."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "I do not intend or wish to profit from this site in any way."
+        ),
+        React.createElement(
+          "li",
+          null,
+          "If you have a legal issue with this site existing, please use the feedback feature to contact me."
+        )
+      )
+    )
+  );
+};
+
 var PublicGameList = function PublicGameList(props) {
 
   var games = props.games;
@@ -2095,7 +2143,7 @@ var PublicResults = function PublicResults(props) {
       React.createElement(
         "p",
         { className: "lead" },
-        "Search for games and watch replays!"
+        "Search for games and watch replays! The search criteria limit returned results; so to see every result leave the search criteria empty."
       ),
       React.createElement("hr", { className: "my-4" }),
       React.createElement(
@@ -2495,6 +2543,11 @@ var renderPublicResults = function renderPublicResults() {
   });
 
   clearLeftPane();
+};
+
+//Render the disclaimer window
+var renderDisclaimerWindow = function renderDisclaimerWindow() {
+  ReactDOM.render(React.createElement(DisclaimerWindow, null), document.querySelector("#main"));
 };
 
 //Handle game results sent from the server
@@ -3088,6 +3141,7 @@ var roomJoined = function roomJoined(data) {
 
   if (data.room) {
     addToChat("You have joined room: " + data.room);
+    addToChat("Please wait for an opponent.");
   }
 
   var subDeckKeys = Object.keys(deck);

@@ -260,6 +260,44 @@ var SignupWindow = function SignupWindow(props) {
               React.createElement("input", { id: "pass2", className: "form-control", type: "password", name: "pass2", placeholder: "retype password" })
             )
           ),
+          React.createElement(
+            "div",
+            { className: "card text-white bg-danger mb-3" },
+            React.createElement(
+              "div",
+              { className: "card-header" },
+              React.createElement("span", { className: "fas fa-exclamation-circle" }),
+              " Warning"
+            ),
+            React.createElement(
+              "div",
+              { className: "card-body" },
+              React.createElement(
+                "h4",
+                { className: "card-title" },
+                "Password Recommendation"
+              ),
+              React.createElement(
+                "p",
+                { className: "card-text" },
+                "Please DO NOT use a password for this site that you use for anything else. Expect that your password could be compromised, even though it's unlikely."
+              )
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "form-group row" },
+            React.createElement("input", { id: "passWarningAck", className: "form-control col-sm-3", type: "checkbox", name: "pass_warning_ack" }),
+            React.createElement(
+              "div",
+              { className: "col-sm-9" },
+              React.createElement(
+                "label",
+                { htmlFor: "passWarningAck", className: "col-form-label" },
+                "I understand the above warning about my password and accept that it's my responsibility to keep my valuable passwords safe."
+              )
+            )
+          ),
           React.createElement("hr", null),
           React.createElement(
             "div",

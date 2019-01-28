@@ -1,17 +1,17 @@
 //The main update call which runs ideally 60 times a second
 const update = () => {
-  
+
   //Execute playback if enabled
   if(isPlayingBack){
-    
+
     //Render the animated progress bar
     renderPlaybackOptions();
-    
+
     if(readyToPlay){
       executePlayback();
     }
   }
-  
+
   //Check for card collisions with the mouse depending on the current state
   if(blastSelect){
     checkCardCollisions(getOpponentHand(), false);
@@ -20,7 +20,7 @@ const update = () => {
   }
   //Draw to the canvas
   draw();
-  
+
   //Request another update
   animationFrame = requestAnimationFrame(update);
 };
@@ -36,10 +36,10 @@ const processClick = (e) => {
         unselectCard(selectedCard);
         socket.emit('pickFromDeck');
         selectedCard = null;
-        break;    
+        break;
       case "playCard":
         const playerHand = getPlayerHand();
-        
+
         if(selectedCard.name === "blast" && !blastSelect && playerStatus === gameState.turnOwner){
           blastSelect = true;
           playerBlastCard = selectedCard;
@@ -49,17 +49,17 @@ const processClick = (e) => {
         } else if (blastSelect){
           blastSelect = false;
           const opponentHand = getOpponentHand();
-          socket.emit('playCard', { 
+          socket.emit('playCard', {
             index: playerHand.indexOf(playerBlastCard),
             blastIndex: opponentHand.indexOf(selectedCard)
           });
-          
+
           selectedCard = null;
           playerBlastCard = null;
           updateReadyStatus(false);
           return;
         }
-      
+
         unselectCard(selectedCard);
         socket.emit('playCard', { index: playerHand.indexOf(selectedCard) });
         selectedCard = null;
@@ -97,7 +97,7 @@ const pointInRect = (rect, point) => {
       return true;
     }
   }
-  
+
   return false;
 };
 
@@ -105,13 +105,13 @@ const pointInRect = (rect, point) => {
 //Used to calculate collisions with rotated cards
 const rotatePoint = (point, anchor, radians) => {
   const translatedPoint = {x: point.x - anchor.x, y: point.y - anchor.y};
-  
+
   const sin = Math.sin(-radians);
   const cos = Math.cos(-radians);
-  
+
   const newX = (translatedPoint.x * cos) - (translatedPoint.y * sin);
   const newY = (translatedPoint.x * sin) + (translatedPoint.y * cos);
-  
+
   return {x: newX + anchor.x, y: newY + anchor.y};
 };
 
@@ -120,7 +120,7 @@ const checkCardCollisions = (cardCollection, selectPlayer) => {
   if(!readyToPlay || gameState.winner !== null || gameState.waiting){
     return;
   }
-  
+
   //Allow the player to pick from their deck
   if(gameState.turnType === "pickFromDeck"){
     const topCard = getTopDeckCard();
@@ -128,29 +128,29 @@ const checkCardCollisions = (cardCollection, selectPlayer) => {
       cardCollection = [topCard];
     } else {
       cardCollection = [];
-    } 
+    }
   }
-  
+
   //Check the player (or opponents) hand
   let newSelection = null;
   for(let i = 0; i < cardCollection.length; i++){
     const card = cardCollection[i];
-    
+
     const cardCenter = {x: card.x + (card.width / 2), y: card.y + (card.height / 2)};
     const rotatedPoint = rotatePoint(mousePos, cardCenter, card.radians);
-    
+
     if(pointInRect(card, rotatedPoint)){
       newSelection = card;
     }
   }
-  
+
   //Select / unselect cards depending on the collision status
   if(newSelection && newSelection !== selectedCard){
-    
+
     if(selectedCard){
       unselectCard(selectedCard, NULL_FUNC);
     }
-    
+
     selectedCard = newSelection;
     selectCard(selectedCard, selectPlayer, false, NULL_FUNC);
   } else if(!newSelection && selectedCard !== null) {
@@ -167,7 +167,7 @@ const animateDeckWhenReady = (cardCollection, callback) => {
       return;
     }
   }
-  
+
   if(callback){
     callback();
   }
@@ -179,7 +179,7 @@ const chainAnimations = (animationPackages, finalCallback) => {
   const animList = animationPackages.map((pack) => pack[0]);
   const paramList = animationPackages.map((pack) => pack[1]);
   const callbacks = [ finalCallback ];
-  
+
   //Build a chain of functions to get called by earlier functions
   for(let i = 0; i < animationPackages.length; i++){
     const newCallback = () => {
@@ -187,21 +187,21 @@ const chainAnimations = (animationPackages, finalCallback) => {
     }
     callbacks.push(newCallback);
   }
-  
+
   callbacks[animationPackages.length]();
 };
 
 //Load all of the blade card images for later drawing usage
 const loadBladeCards = (cardImages) => {
-  
+
   for(let i = 0; i < cardImages.length; i++){
     const cardImage = cardImages[i];
     const image = new Image();
-    
+
     image.onload = () => {
       cardImageStruct[cardImage.name] = image;
     }
-    
+
     image.src = cardImage.src;
   }
 };
@@ -218,11 +218,11 @@ const notifyGameData = (data) => {
 //Process room options sent from the server
 const roomOptions = (data) => {
   if(!inRoom){
-    
+
     if(pageView === "#blade"){
       renderRoomSelection(data.rooms, false);
     }
-    
+
     setTimeout(() => {
       socket.emit('getRooms');
     }, 10);
@@ -237,9 +237,9 @@ const processPlaybackData = (data) => {
   renderPlayback(true);
   viewport = document.querySelector("#viewportModal");
   viewCtx = viewport.getContext('2d');
-  
+
   loadPlayerProfiles(data.playerData);
-  
+
   playbackData = data;
 };
 
@@ -248,26 +248,26 @@ const startPlayback = () => {
   const data = playbackData;
   const perspectiveSelect = document.querySelector("#perspectiveSelect");
   const perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
-  
+
   const game = data.game;
-  
+
   //Record the total number of actions taken during playback
   playbackSequenceCount = game.gameplay.length;
-  
+
   //Save loaded player profiles for use after "joining the room"
   const tempProfiles = playerProfiles;
-  
+
   roomJoined({status: perspective});
-  
+
   playerProfiles = tempProfiles;
-  
+
   setDeck({
     player1: game.p1Hand,
     player2: game.p2Hand,
     p1Deck: game.p1Deck,
     p2Deck: game.p2Deck,
   });
-  
+
   isPlayingBack = true;
   resetOnClose = true;
   turnSequence = game.gameplay;
@@ -287,13 +287,13 @@ let waiting = false;
 let waitTime = 0;
 let bypassWait = false;
 const executePlayback = () => {
-  
+
   //If there are no more turns to process, stop playing back
   if(turnSequence.length <= 0){
     isPlayingBack = false;
     return;
   }
-  
+
   //Check if the deck length check is equal to the current player's hand size (special card hasn't finished)
   if(playerDeckCheck){
     if(playerDeckCheck === getPlayerHand().length){
@@ -302,7 +302,7 @@ const executePlayback = () => {
       playerDeckCheck = null;
     }
   }
-  
+
   if(opponentDeckCheck){
     if(opponentDeckCheck === getOpponentHand().length){
       return;
@@ -310,23 +310,23 @@ const executePlayback = () => {
       opponentDeckCheck = null;
     }
   }
-  
+
   //Check to see if the client wants to wait for accurate timing, and then postpone updates if necessary
   if(waiting){
     return;
   }
-  
+
   //Grab the next turn
   const turnFlag = turnSequence.shift();
-  
+
   //A struct to determine the required actor
   const actor = {
     0: "player1",
     1: "player2",
   }
-  
+
   let action = NULL_FUNC;
-  
+
   //Depending on the first flag, play an action
   switch(turnFlag){
     //Action 0: sort the deck
@@ -343,7 +343,7 @@ const executePlayback = () => {
       const card = getTopDeckCardFrom(player);
       card.ref = card.name;
       const data = {player, card};
-      action = () => {  
+      action = () => {
         pickFromDeck(data);
       };
       break;
@@ -365,7 +365,7 @@ const executePlayback = () => {
       const index = turnSequence.shift();
       const card = deck[player][index];
       const data = {cardSet: player, name: card.name, index};
-      
+
       //Make sure special cards finish what they set out to do before moving on
       if(card.name === 1 || card.name === "bolt" || card.name === "mirror"){
         const isPlayer = playerStatus === player;
@@ -375,7 +375,7 @@ const executePlayback = () => {
           opponentDeckCheck = getOpponentHand().length;
         }
       }
-      
+
       action = () => {
         playCard(data);
       };
@@ -388,7 +388,7 @@ const executePlayback = () => {
       const card = deck[player][index];
       const data = {cardSet: player, name: card.name, index, blastIndex: turnSequence.shift()};
       playerDeckCheck = getPlayerHand().length;
-	  
+
 	  action = () => {
 		playCard(data);
 	  };
@@ -405,7 +405,7 @@ const executePlayback = () => {
     case 6: {
       let winner;
       const winnerIndex = turnSequence.shift();
-      
+
       if(winnerIndex === 0){
         winner = "Tie";
       } else if(winnerIndex === 1){
@@ -415,33 +415,33 @@ const executePlayback = () => {
       } else {
         winner = "Unknown";
       }
-      
+
       const update = {
         turnType: "end",
         winner,
       };
-      
+
       //No point in waiting for turn length here
       updateGamestate(update);
-      
+
       //Terminate the remaining turn sequence information
       turnSequence = [];
-      
+
       return;
     }
     default: {
       break;
     }
   }
-  
+
   //Wait time between turns
   waitTime = turnSequence.shift();
   waiting = true;
-  
+
   if(bypassWait){
     waitTime = 0;
   }
-  
+
   setTimeout(() => {
     action();
     //Allow the action to commence before setting waiting to false
@@ -449,8 +449,8 @@ const executePlayback = () => {
       waiting = false;
     }, 100);
   }, waitTime);
-  
-  
+
+
 };
 
 //When a room is selected from the existing rooms list, paste the code into the room join bar
@@ -472,27 +472,27 @@ const joinRoom = (e) => {
 
 //Call to reset the gamestate and various variables
 const resetGame = () => {
-  
+
   resetOnClose = false;
-  
+
   const subDeckKeys = Object.keys(deck);
   for(let i = 0; i < subDeckKeys.length; i++){
     const key = subDeckKeys[i];
     deck[key] = [];
   }
-  
+
   deck = {};
   fields = {
   'player1': [],
   'player2': [],
   };
-  
+
   playbackData = null;
   isPlayingBack = false;
   playerProfiles = {};
   playerStatus = null;
   turnSequence = [];
-  
+
   gameState.turnType = "begin";
   gameState.turnOwner = null;
   gameState.player1Points = 0;
@@ -505,37 +505,38 @@ const resetGame = () => {
 const roomJoined = (data) => {
   playerStatus = data.status;
   inRoom = true;
-  
+
   if(data.room){
     addToChat(`You have joined room: ${data.room}`);
+    addToChat(`Please wait for an opponent.`);
   }
-  
+
   const subDeckKeys = Object.keys(deck);
   for(let i = 0; i < subDeckKeys.length; i++){
     const key = subDeckKeys[i];
     deck[key] = [];
   }
-  
+
   fields = {
     'player1': [],
     'player2': [],
   };
-  
+
   playerProfiles = {};
-  
+
   gameState.turnType = "begin";
   gameState.turnOwner = null;
   gameState.player1Points = 0;
   gameState.player2Points = 0;
   gameState.winner = null;
   gameState.waiting = false;
-  
+
   renderRoomSelection([], true);
 }
 
 //When player profile data is received request follow-up information and build the player profiles
 const loadPlayerProfiles = (data) => {
-  
+
   if(data.player1){
     sendAjax('GET', '/getProfile', `profile=${data.player1.profile}`, (profileData) => {
       const image = new Image();
@@ -546,11 +547,11 @@ const loadPlayerProfiles = (data) => {
         }
         renderPlaybackOptions();
       };
-      
+
       image.src = profileData.imageFile;
     });
   }
-  
+
   if(data.player2){
     sendAjax('GET', '/getProfile', `profile=${data.player2.profile}`, (profileData) => {
       const image = new Image();
@@ -561,7 +562,7 @@ const loadPlayerProfiles = (data) => {
         }
         renderPlaybackOptions();
       };
-      
+
       image.src = profileData.imageFile;
     });
   }
@@ -569,7 +570,7 @@ const loadPlayerProfiles = (data) => {
 
 //Process a response from the server holding deck information
 const setDeck = (data) => {
-  
+
   const subDeckKeys = Object.keys(data);
   for(let i = 0; i < subDeckKeys.length; i++){
     const key = subDeckKeys[i];
@@ -577,7 +578,7 @@ const setDeck = (data) => {
     for(let j = 0; j < data[key].length; j++){
       const cardData = data[key][j];
       let card;
-      
+
       //Construct new cards
       if(cardData){
         const image = cardImageStruct[cardData.ref];
@@ -586,11 +587,11 @@ const setDeck = (data) => {
         const image = cardImageStruct["back"];
         card = new Card("back", 0, {x: -200, y: -200}, {width: image.width, height: image.height});
       }
-      
+
       deck[key].push(card);
     }
   }
-  
+
   //Start building both decks
   if(playerStatus === 'player1'){
     initPlayerDeck(deck.player1, deck.p1Deck);
@@ -718,7 +719,7 @@ const initPlayerDeck = (playerHand, playerDeck) => {
     [startCardFlip, [playerHand, false]],
     [foldInCards, [playerHand, 1100, 770]],
     [startCardFlip, [playerHand, true]]
-    
+
   ], () => {
     socket.emit('sortDeck');
   });
@@ -747,7 +748,7 @@ const updateReadyStatus = (status) => {
     return;
   } else {
     confirmReady++;
-    
+
     if(confirmReady >= 10 && status){
       readyToPlay = status;
       socket.emit('ready', {status});
@@ -763,11 +764,11 @@ const updateReadyStatus = (status) => {
 //Sort the player's hand and animate it
 const sortDeck = (data) => {
   let playerHand = getPlayerHand();
-  
+
   playerHand = playerHand.sort((cardA, cardB) => {
     return cardB.sortValue - cardA.sortValue;
   });
-  
+
   chainAnimations([
     [startCardFlip, [playerHand, false]],
     [flushCards, [playerHand, 770, true, false, true]]
@@ -782,11 +783,11 @@ const sortDeck = (data) => {
 //Sort the opponent's hand and animate it
 const sortOpponentDeck = (data) => {
   let opponentHand = getOpponentHand();
-  
+
   opponentHand = opponentHand.sort((cardA, cardB) => {
     return cardB.sortValue - cardA.sortValue;
   });
-  
+
   chainAnimations([
     [flushCards, [opponentHand, 70, false, false, true]]
   ], () => {
@@ -801,21 +802,21 @@ const sortOpponentDeck = (data) => {
 const pickFromDeck = (data) => {
   const player = data.player;
   gameState.waiting = false;
-  
+
   //Animate differently depending on if the card is the player's or the opponent's
   if(playerStatus === player){
     const playerDeck = getPlayerDeck();
     const index = playerDeck.length - 1;
     const card = playerDeck[index];
-    
+
     if(selectedCard === card){
       selectedCard = null;
     }
-    
+
     fields[player].push(card);
     playerDeck.splice(index, 1);
     card.reveal(data.card.ref);
-    
+
     stackCards(fields[player], true, 500, () => {
       animateDeckWhenReady(fields[player], () => {
         startCardFlip([card], false);
@@ -825,13 +826,13 @@ const pickFromDeck = (data) => {
     const opponentDeck = getOpponentDeck();
     const index = opponentDeck.length - 1;
     const card = opponentDeck[index];
-    
+
     fields[player].push(card);
     opponentDeck.splice(index, 1);
     card.reveal(data.card.ref);
-    
+
     card.flipImage();
-    
+
     stackCards(fields[player], false, 500, () => {
       animateDeckWhenReady(fields[player], () => {
         startCardFlip([card], false);
@@ -844,21 +845,21 @@ const pickFromDeck = (data) => {
 const splicePlayerCard = (cardSet, index) => {
   cardSet.splice(index, 1);
   cardSet.reverse();
-  
+
   //Reset cards to their original position (cancel selection)
   for(let i = 0; i < cardSet.length; i++){
     const card = cardSet[i];
-    
+
     if(selectedCard === card){
       card.cancelAnimation();
       selectedCard = null;
     }
-    
+
     card.x = card.originalLocation.x;
     card.y = card.originalLocation.y;
   }
-  
-  flushCards(cardSet, 770, true, false, true, () => { 
+
+  flushCards(cardSet, 770, true, false, true, () => {
     for(let i = 0; i < cardSet.length; i++){
       const card = cardSet[i];
       card.x = card.originalLocation.x;
@@ -871,7 +872,7 @@ const splicePlayerCard = (cardSet, index) => {
 const spliceOpponentCard = (cardSet, index) => {
   cardSet.splice(index, 1);
   cardSet.reverse();
-  flushCards(cardSet, 70, false, false, true, () => { 
+  flushCards(cardSet, 70, false, false, true, () => {
     for(let i = 0; i < cardSet.length; i++){
       const card = cardSet[i];
       card.x = card.originalLocation.x;
@@ -889,14 +890,14 @@ const turnAccepted = () => {
 const playCard = (data) => {
   const cardSet = deck[data.cardSet];
   const card = cardSet[data.index];
-  
+
   gameState.waiting = false;
-  
+
   if(selectedCard === card){
     unselectCard(selectedCard);
     selectedCard = null;
   }
-  
+
   //Animate the card differently depending on who played it and what the card is
   if(deck[data.cardSet] === getPlayerHand()){
     switch(card.name){
@@ -966,7 +967,7 @@ const playCard = (data) => {
   } else {
     card.reveal(data.name);
     card.flipImage();
-    
+
     switch(data.name){
       case "bolt":
         selectCard(card, true, true, () => {
@@ -974,14 +975,14 @@ const playCard = (data) => {
             const playerField = getPlayerField();
             const target = playerField[playerField.length - 1];
             startCardFlip([target], false);
-            
+
             //Animate or timeout so that opponent can actually see move
             fadeCard(card, () => {
               spliceOpponentCard(cardSet, data.index);
             });
           });
         });
-        
+
         break;
       case "mirror":
         selectCard(card, true, true, () => {
@@ -1029,7 +1030,7 @@ const playCard = (data) => {
             });
             startCardFlip([affectedCard], false);
           });
-          
+
         } else {
           fields[data.cardSet].push(card);
           spliceOpponentCard(cardSet, data.index);
@@ -1061,36 +1062,36 @@ const endGame = () => {
 
   inRoom = false;
   blastSelect = false;
-  
+
   roomOptions({rooms: []});
 };
 
 //Process a server update regarding the gamestate
 const updateGamestate = (data) => {
-  
+
   if(!data){
     return;
   }
-  
+
   const keys = Object.keys(data);
-  
+
   gameState.waiting = false;
-  
+
   //Update the sent keys
   for(let i = 0; i < keys.length; i++){
     const key = keys[i];
     gameState[key] = data[key];
   }
-  
+
   //Process a request to clear the field / end the game
   if(gameState.clearFields === true){
     clearFields();
   }
-  
+
   if(gameState.winner !== null){
     endGame();
   }
-  
+
   updateReadyStatus(false);
 }
 
@@ -1108,7 +1109,7 @@ const clearFields = () => {
         propsEnd: {x: prepCanvas.width + 100},
       }, true
     );
-    
+
     card.bindAnimation(moveAnim, () => {
       animateDeckWhenReady(playerField, () => {
         gameState.clearFields = false;
@@ -1116,7 +1117,7 @@ const clearFields = () => {
       });
     });
   }
-  
+
   for(let i = 0; i < opponentField.length; i++){
     const card = opponentField[i];
     const moveAnim = new Animation(
@@ -1127,7 +1128,7 @@ const clearFields = () => {
         propsEnd: {x: -100},
       }, true
     );
-    
+
     card.bindAnimation(moveAnim, () => {
       animateDeckWhenReady(opponentField, () => {
         gameState.clearFields = false;
@@ -1150,20 +1151,20 @@ const selectCard = (card, playerSelect, sealBond, callback) => {
       begin: 0,
       timeToFinish: 200,
       propsBegin: {x: card.x, y: card.y, hueRotate: card.hueRotate},
-      propsEnd: {x: card.originalLocation.x - xMod, y: card.originalLocation.y - yMod, hueRotate: 90}, 
+      propsEnd: {x: card.originalLocation.x - xMod, y: card.originalLocation.y - yMod, hueRotate: 90},
     }, false
   );
-  
+
   if(card.sealed){
     return;
   }
-  
+
   card.bindAnimation(moveAnim, callback, sealBond ? true : false);
 };
 
 //Construct an animation to unselect a card
 const unselectCard = (card, callback) => {
-  
+
   const moveAnim = new Animation(
     {
       begin: 0,
@@ -1172,11 +1173,11 @@ const unselectCard = (card, callback) => {
       propsEnd: {x: card.originalLocation.x, y: card.originalLocation.y, hueRotate: 0},
     }, false
   );
-  
+
   if(card.sealed){
     return;
   }
-  
+
   card.bindAnimation(moveAnim, callback);
 };
 
@@ -1195,7 +1196,7 @@ const moveTo = (cardCollection, x, y, time, offset, callback) => {
     card.bindAnimation(moveAnim, () => {
       card.originalLocation = {x: card.x, y: card.y};
       animateDeckWhenReady(cardCollection, () => {
-        
+
         if(callback){
           callback();
         }
@@ -1248,10 +1249,10 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
   for(let i = 0; i < cardCollection.length; i++){
     const card = cardCollection[i];
     const x = 1100 + (100 * (cardCollection.length / 2 - 1 - i));
-    
+
     const middle = Math.floor((cardCollection.length / 2));
     let distanceFromMiddle = middle - i;
-    
+
     if(cardCollection.length % 2 === 0){
       if(distanceFromMiddle < 0){
         distanceFromMiddle = middle - i;
@@ -1259,18 +1260,18 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
         distanceFromMiddle = middle - i - 1;
       }
     }
-    
+
     //Animate differently depending on player status
-    const y = 
+    const y =
       curveDown ? baseLineY + Math.max(Math.pow(Math.abs(distanceFromMiddle * 6), 1.3), 6)
       : baseLineY - Math.max(Math.pow(Math.abs(distanceFromMiddle * 6), 1.3), 6);
-      
+
     const radians = curveDown ? distanceFromMiddle * 0.05 : distanceFromMiddle * -0.05;
-    
+
     //Reset the card location
     card.originalLocation.x = x;
     card.originalLocation.y = y;
-    
+
     const flushAnim = new Animation(
       {
         begin: sequentially ? (cardCollection.length - 1 - i) * 200 : 0,
@@ -1279,12 +1280,12 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
         propsEnd: {x, y, radians},
       }, true
     );
-    
+
     card.bindAnimation(flushAnim, () => {
       animateDeckWhenReady(cardCollection, callback);
     });
   }
-  
+
   if(reverse){
     cardCollection.reverse();
   }
@@ -1292,14 +1293,14 @@ const flushCards = (cardCollection, baseLineY, curveDown, sequentially, reverse,
 
 //Construct an animation to stack cards on the field
 const stackCards = (cardCollection, expandRight, time, callback) => {
-  
+
   const baseX = expandRight ? 1080 : 670;
   const baseY = expandRight ? 535 : 300;
   for(let i = 0; i < cardCollection.length; i++){
     const card = cardCollection[i];
-    
+
     const x = expandRight ? baseX + (40 * i) : baseX - (40 * i);
-    
+
     const stackAnim = new Animation(
       {
         begin: 0,
@@ -1308,7 +1309,7 @@ const stackCards = (cardCollection, expandRight, time, callback) => {
         propsEnd: {x, y: baseY, radians: expandRight ? 0 : Math.PI},
       }, true
     );
-    
+
     card.bindAnimation(stackAnim, () => {
       animateDeckWhenReady(cardCollection, callback);
     });
@@ -1319,7 +1320,7 @@ const stackCards = (cardCollection, expandRight, time, callback) => {
 const foldInCards = (cardCollection, x, y, callback) => {
   for(let i = 0; i < cardCollection.length; i++){
     const card = cardCollection[i];
-    
+
     const foldInAnim = new Animation(
       {
         begin: 0,
@@ -1328,7 +1329,7 @@ const foldInCards = (cardCollection, x, y, callback) => {
         propsEnd: {x, y, radians: 0},
       }, true
     );
-    
+
     card.bindAnimation(foldInAnim, () => {
       animateDeckWhenReady(cardCollection, callback);
     });
@@ -1345,7 +1346,7 @@ const fadeCard = (card, callback) => {
       propsEnd: {opacity: 0},
     }, true
   );
-  
+
   card.bindAnimation(fadeAnim, callback);
 };
 

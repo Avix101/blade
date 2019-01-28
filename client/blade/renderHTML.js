@@ -5,7 +5,7 @@ const GameWindow = (props) => {
       <canvas id="viewport" width={props.width} height={props.height}></canvas>
       <div className="text-center">
         <button onClick={goFullscreen} id="fullscreenButton" className="btn btn-lg btn-primary moveDown">Go Fullscreen</button>
-        <button onClick={exitFullscreen} 
+        <button onClick={exitFullscreen}
           id="exitFullscreenButton" className="hidden fullscreenButton btn btn-lg btn-danger">Exit Fullscreen
         </button>
       </div>
@@ -19,11 +19,11 @@ const MusicAndChatWindow = (props) => {
     <div className="text-center">
       <h1>Music Player</h1>
       <hr />
-      <iframe 
+      <iframe
         src="https://www.youtube.com/embed/videoseries?list=PLbzURmDMdJdNHYJnRQjXxa0bDZyPcslpO"
         frameBorder="0" allow="autoplay; encrypted-media" id="videoFrame">
       </iframe>
-      
+
       <h1>Chat Window</h1>
       <hr />
       <textarea id="chat" readOnly className="form-control"></textarea>
@@ -42,7 +42,7 @@ const exitFullscreen = () => {
   const viewport = document.querySelector("#viewport");
   const fullscreenButton = document.querySelector("#fullscreenButton");
   const exitFullscreenButton = document.querySelector("#exitFullscreenButton");
-  
+
   if(viewport){
     viewport.classList.remove("fullscreen");
     const dimensions = calcDisplayDimensions();
@@ -58,7 +58,7 @@ const goFullscreen = () => {
   const viewport = document.querySelector("#viewport");
   const fullscreenButton = document.querySelector("#fullscreenButton");
   const exitFullscreenButton = document.querySelector("#exitFullscreenButton");
-  
+
   if(viewport){
     viewport.width = window.innerWidth;
     viewport.height = window.innerHeight;
@@ -78,19 +78,19 @@ const renderRightPanel = () => {
 
 //Render the main game
 const renderGame = (width, height) => {
-  
+
   ReactDOM.render(
     <GameWindow width={width} height={height} />,
     document.querySelector("#main")
   );
-  
+
   //Hook up viewport (display canvas) to JS code
   viewport = document.querySelector("#viewport");
   viewCtx = viewport.getContext('2d');
   viewport.addEventListener('mousemove', getMouse);
   viewport.addEventListener('mouseleave', processMouseLeave);
   viewport.addEventListener('click', processClick);
-  
+
   renderRightPanel();
 };
 
@@ -103,13 +103,13 @@ const disableDefaultForm = (e) => {
 //Handle a request to change a password
 const handlePasswordChange = (e) => {
 	e.preventDefault();
-	
+
   //Password fields cannot be empty
 	if($("#newPassword").val() == '' || $("#newPassword2").val() == '' || $("#password").val() == ''){
 		handleError("All fields are required to change password.");
 		return false;
 	}
-  
+
   //New password and password confirmation should match
   if($("#newPassword").val() !==  $("#newPassword2").val()){
     handleError("New password and password confirmation must match");
@@ -123,14 +123,14 @@ const handlePasswordChange = (e) => {
     $("#newPassword2").val("");
     $("#password").val("");
   });
-	
+
 	return false;
 };
 
 //Handle a request to change a user's icon
 const handleIconChange = (e) => {
   e.preventDefault();
-  
+
   //No need to validate- user can't make a wrong decision, and if they hack into the select,
   //the server will verify the data
   const data = $("#iconChangeForm").serialize();
@@ -141,35 +141,35 @@ const handleIconChange = (e) => {
     $("#profile").attr('src', profileImage);
     renderProfile();
   });
-  
+
   return false;
 };
 
 //Handle a request to change a user's privacy setting
 const handlePrivacyChange = (e) => {
   e.preventDefault();
-  
+
   //Again, no need to validate- either true or false
   sendAjax('POST', $("#privacyChangeForm").attr("action"), $("#privacyChangeForm").serialize(), () => {
     handleSuccess('Privacy mode updated!');
     privacy = $("#privacySetting").val();
     renderProfile();
   });
-  
+
   return false;
 };
 
 //Process a request to hide a modal
 const hideModal = () => {
   const modal = document.querySelector("#modalContainer div");
-  
+
   if(!modal){
     return;
   }
-  
+
   modal.classList.remove("show");
   modal.classList.add("hide-anim");
-  
+
   if(resetOnClose){
     endGame();
     resetGame();
@@ -179,40 +179,40 @@ const hideModal = () => {
 //Handle a request to submit feedback
 const handleFeedback = (e) => {
   e.preventDefault();
-  
+
   if($("#feedbackName").val() == '' || $("#feedbackText").val == ''){
     handleError("Both a name and feedback are required");
     return false;
   }
-  
+
   sendAjax('POST', $("#feedbackForm").attr("action"), $("#feedbackForm").serialize(), () => {
     handleSuccess("Feedback successfully submitted!");
     $("#feedbackText").val("");
   });
-  
+
   return false;
 };
 
 //Handle a request to get a list of public games
 const handlePublicGameRequest = (e) => {
   e.preventDefault();
-  
+
   sendAjax('GET', $("#publicGameResultsForm").attr("action"), $("#publicGameResultsForm").serialize(), (data) => {
     renderPublicGameList(data.data);
   });
-  
+
   return false;
 };
 
 //Construct a window to create / join a room for playing Blade
 const RoomWindow = (props) => {
-  
+
   if(props.renderEmpty){
     return (<div></div>);
   }
-  
+
   let roomOptions;
-  
+
   //Construct a list of available rooms if there are any
   const bgColor = "bg-secondary";
   if(props.rooms.length > 0){
@@ -231,7 +231,7 @@ const RoomWindow = (props) => {
           data-room="" onClick={onRoomSelect}>No Rooms Available</a>
     )];
   }
-  
+
   //Return the created and formatted form
   return (
     <div id="roomSelect">
@@ -275,7 +275,7 @@ const InstructionsWindow = (props) => {
     <div className="container">
       <div className="jumbotron">
         <h1 className="display-3">Instructions:</h1>
-        <p className="lead">Want to know how to play Blade? Well, let me help!</p>
+        <p className="lead">Want to know how to play Blade? Of course you do!</p>
         <hr className="my-4" />
         <h2>General Game Rules</h2>
         <ol>
@@ -301,7 +301,7 @@ const InstructionsWindow = (props) => {
               be flipped and not counted in their score.</p>
             </div>
           </li>
-          <li> 
+          <li>
             <div className="instructionsCard">
               <img className="rounded pull-left" src="/assets/img/cards/02x Wand.png" alt="1 Card" />
               <p>1s provide you with an opporunity to recover from a bolt card. If you play a 1 when
@@ -309,21 +309,21 @@ const InstructionsWindow = (props) => {
               when the top card isn't turned over, it will act as a regular numbered card.</p>
             </div>
           </li>
-          <li> 
+          <li>
             <div className="instructionsCard">
               <img className="rounded pull-left" src="/assets/img/cards/04x Mirror.png" alt="Mirror Card" />
               <p>Mirror cards will switch your field pile with your opponent's. This is best used when the point difference
               between you and your opponent is large.</p>
             </div>
           </li>
-          <li> 
+          <li>
             <div className="instructionsCard">
               <img className="rounded pull-left" src="/assets/img/cards/02x Blast.png" alt="Blast Card" />
               <p>Blast cards allow you to select one of your opponent's cards and wipe it from their hand. As an
               additional special rule, when you play a blast card, you keep your turn and get to play another card.</p>
             </div>
           </li>
-          <li> 
+          <li>
             <div className="instructionsCard">
               <img className="rounded pull-left" src="/assets/img/cards/02x Force.png" alt="Force Card" />
               <p>Force cards double your current field score. (Example: a field score of 19 would be
@@ -343,14 +343,14 @@ const AboutWindow = (props) => {
     <div className="container">
       <div className="jumbotron">
         <h1 className="display-3">Trails of Cold Steel</h1>
-        <p className="lead">Check out the original games!</p>
+        <p className="lead">Check out the games!</p>
         <hr className="my-4" />
         <h2>ToCS 1</h2>
         <img className="banner" src="/assets/img/tocs1.jpg" alt="Trails of Cold Steel 1 Banner" />
-        <p className="lead aboutPara">Trails of Cold Steel is a Japanese RPG made by Falcom, and published by XSEED in the US. The first
-        ToCS is the 6th entry in the 'Trails' or 'Kiseki' saga which is part of an even larger series
-        titled "The Legend of Heroes". Blade is a recreation of a minigame found in ToCS.</p>
-        <p className="lead aboutPara">To find out more about the original game and how to purchase a copy for yourself, please visit its
+        <p className="lead aboutPara">Trails of Cold Steel is a Japanese RPG made by Falcom. The first
+        ToCS is the 6th entry in the 'Trails' or 'Kiseki' saga. If you're into high quality story-based RPGs
+        look no further! Blade, the game recreated on this site, is actually a minigame found in ToCS.</p>
+        <p className="lead aboutPara">To find out more about the game and how to purchase a copy for yourself, please visit its
         Steam store page.</p>
         <div className="text-centered button-div">
           <a href="http://store.steampowered.com/app/538680/The_Legend_of_Heroes_Trails_of_Cold_Steel/" target="_blank">
@@ -358,20 +358,20 @@ const AboutWindow = (props) => {
           </a>
         </div>
         <hr className="my-4" />
-        
+
         <h2>ToCS II</h2>
         <img className="banner" src="/assets/img/tocs2.jpg" alt="Trails of Cold Steel 2 Banner" />
-        <p className="lead aboutPara">The second entry in the Cold Steel arc of the Trails series picks up
-        where the first one left off. It is highly recommended that the games are played in order. Blade exists in
+        <p className="lead aboutPara">Because the series follows an overarching story and also because it's typically
+        better to play games in the intended release order, definitly check out ToCS II after ToCS I. Blade exists in
         both games, but the 'Blast' and 'Force' cards were introduced in ToCS II.</p>
         <p className="lead aboutPara">If you're ready to learn more about the second Trails of Cold Steel game,
-        please visit the Steam store page. Be aware that the page contains spoilers for the first game.</p>
+        please visit the Steam store page. It might be obvious, but the page contains spoilers for the first game.</p>
         <div className="text-centered button-div">
           <a href="http://store.steampowered.com/app/748490/The_Legend_of_Heroes_Trails_of_Cold_Steel_II/" target="_blank">
             <button className="btn btn-lg btn-primary">ToCS II Steam Page</button>
           </a>
         </div>
-        
+
       </div>
     </div>
   );
@@ -385,7 +385,7 @@ const FeedbackWindow = (props) => {
         <h1 className="display-3">Feedback:</h1>
         <p className="lead">Have something to say about the site? Please let me know!</p>
         <hr className="my-4" />
-        
+
         <form
         id="feedbackForm" name="feedbackForm"
         action="/feedback"
@@ -419,7 +419,7 @@ const FeedbackWindow = (props) => {
 
 //Construct a profile panel that holds user info, a password change screen, and game history data
 const ProfileWindow = (props) => {
-  
+
   //Determine privacy mode data
   let dataPrivate;
   let privateButtonMsg;
@@ -433,21 +433,21 @@ const ProfileWindow = (props) => {
     privateButtonMsg = "Enable Privacy Mode";
     privateButtonClass = "btn btn-lg btn-success formSubmit";
   }
-  
+
   return (
     <div className="container">
       <div className="jumbotron">
         <h1 className="display-3">Personal Profile:</h1>
         <p className="lead">All about you! Kinda.</p>
         <hr className="my-4" />
-        
+
         <h2>User Info</h2>
         <p className="lead">Username: {username}</p>
         <p className="lead">Profile Pic:
           <img src={profileImage} alt="profileImage" />
         </p>
         <hr className="my-4" />
-        
+
         <h2>Change Password</h2>
         <form
         id="passwordChangeForm" name="passwordChangeForm"
@@ -491,7 +491,7 @@ const ProfileWindow = (props) => {
           </fieldset>
         </form>
         <hr className="my-4" />
-        
+
         <h2>Change Player Icon</h2>
         <form
         id="iconChangeForm" name="iconChangeForm"
@@ -518,7 +518,7 @@ const ProfileWindow = (props) => {
           </fieldset>
         </form>
         <hr className="my-4" />
-        
+
         <h2>Game Results Privacy</h2>
         <form
         id="privacyChangeForm" name="privacyChangeForm"
@@ -542,7 +542,7 @@ const ProfileWindow = (props) => {
           </fieldset>
         </form>
         <hr className="my-4" />
-        
+
         <div id="gameHistory">
         </div>
       </div>
@@ -552,19 +552,19 @@ const ProfileWindow = (props) => {
 
 //Construct a game history panel the lists a user's previous matches
 const GameHistory = (props) => {
-  
+
   //Sort the games by most recently played to least recently
   let games = props.games.sort((gameA, gameB) => {
     const timeA = new Date(gameA.date).getTime();
     const timeB = new Date(gameB.date).getTime();
     return timeB - timeA;
   });
-  
+
   //Create a panel that holds all relevant data pertaining to game result
   let wins = 0;
   let losses = 0;
   games = games.map((game, index) => {
-    
+
     const date = new Date(game.date);
     const playerProfile = game.playerIdentity === "player1" ? game.player1 : game.player2;
     const opponentProfile = game.playerIdentity === "player1" ? game.player2 : game.player1;
@@ -572,23 +572,23 @@ const GameHistory = (props) => {
     const opponentScore = game.playerIdentity === "player1" ? game.player2Score : game.player1Score;
     const playerPrivacy = game.playerIdentity === "player1" ? game.player1Privacy : game.player2Privacy;
     const opponentPrivacy = game.playerIdentity === "player1" ? game.player2Privacy : game.player1Privacy;
-    
+
     let playerPrivacyMsg;
     let opponentPrivacyMsg;
     let privacyButton;
-    
+
     if(opponentPrivacy === true){
       opponentPrivacyMsg = "Opponent vote: Private";
     } else {
       opponentPrivacyMsg = "Opponent vote: Public";
     }
-    
+
     const status = !playerPrivacy && !opponentPrivacy ? "Public" : "Private";
-    
+
     //Construct a privacy setting for the game based on the current settings
     if(playerPrivacy === true){
       playerPrivacyMsg = "Your vote: Private";
-      
+
       const title = `${playerPrivacyMsg}, ${opponentPrivacyMsg}, Status: ${status}`;
       privacyButton = (
         <button className="btn btn-lg btn-success" data-private="false" onClick={changeGamePrivacy} title={title}>
@@ -604,10 +604,10 @@ const GameHistory = (props) => {
         </button>
       );
     }
-    
+
     let gameStatus;
     let gameStatusColor;
-    
+
     if(game.winner === game.playerIdentity){
       gameStatus = "WIN";
       gameStatusColor = "text-success";
@@ -620,7 +620,7 @@ const GameHistory = (props) => {
       gameStatus = "TIE";
       gameStatusColor = "text-warning";
     }
-    
+
     return (
       <li className="list-group-item d-flex bg-light">
         <div className="gameHistory">
@@ -654,11 +654,11 @@ const GameHistory = (props) => {
       </li>
     );
   });
-  
+
   const totalGameBarWidth = {width: `${(games.length / games.length) * 100}%`};
   const winGameBarWidth = {width: `${(wins / games.length) * 100}%`};
   const lossGameBarWidth = {width: `${(losses / games.length) * 100}%`};
-  
+
   //Build the entire game history panel, with all game results included
   return (
     <div>
@@ -666,29 +666,29 @@ const GameHistory = (props) => {
       <p className="lead">Total Games Played: <span className="text-info">{games.length}</span></p>
       <div className="progress">
         <div className="progress-bar progress-bar-striped progress-bar-animated bg-info"
-          role="progressbar" 
+          role="progressbar"
           aria-value={games.length}
           aria-valuemin="0"
           aria-valuemax={games.length}
           style={totalGameBarWidth}
         ></div>
       </div>
-      
+
       <p className="lead aboutPara">Wins: {wins}/{games.length}</p>
       <div className="progress">
         <div className="progress-bar progress-bar-striped progress-bar-animated bg-success"
-          role="progressbar" 
+          role="progressbar"
           aria-value={wins}
           aria-valuemin="0"
           aria-valuemax={games.length}
           style={winGameBarWidth}
         ></div>
       </div>
-      
+
       <p className="lead aboutPara">Losses: {losses}/{games.length}</p>
       <div className="progress">
         <div className="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-          role="progressbar" 
+          role="progressbar"
           aria-value={losses}
           aria-valuemin="0"
           aria-valuemax={games.length}
@@ -696,7 +696,7 @@ const GameHistory = (props) => {
         ></div>
       </div>
       <br />
-      
+
       <p className="lead">Sorted by most recent to least recent:</p>
       <div id="gameHistoryList">
         <ul className="list-group">
@@ -707,20 +707,42 @@ const GameHistory = (props) => {
   );
 };
 
+const DisclaimerWindow = (props) => {
+  return (
+    <div className="container">
+      <div className="jumbotron">
+        <h1 className="display-3">Site Disclaimer:</h1>
+        <hr className="my-4" />
+        <ol>
+          <li>As per the signup warning, you have agreed to not use a sensitive password
+          for your account on this site. I don't plan on any breaches, but it's
+          also your responsibility to be careful with your sensitive passwords.</li>
+          <li>I do not claim ownership of the the art assets used on this site.
+          Profile icons, site favicon, and card assets were taken from ToCS I & II and
+          therefore do not belong to me.</li>
+          <li>I do not intend or wish to profit from this site in any way.</li>
+          <li>If you have a legal issue with this site existing, please use the
+          feedback feature to contact me.</li>
+        </ol>
+      </div>
+    </div>
+  );
+};
+
 const PublicGameList = (props) => {
-  
+
   let games = props.games;
   games = games.map((game, index) => {
-    
+
     const date = new Date(game.date);
     const player1Profile = game.player1;
     const player2Profile = game.player2;
     const player1Score = game.player1Score;
     const player2Score = game.player2Score;
-    
+
     let gameStatus;
     const gameStatusColor = "text-primary";
-    
+
     if(game.winner === "player1"){
       gameStatus = `${player1Profile.username}'s WIN`;
     } else if (game.winner === "player2"){
@@ -728,7 +750,7 @@ const PublicGameList = (props) => {
     } else {
       gameStatus = "TIED GAME";
     }
-    
+
     return (
       <li className="list-group-item d-flex bg-light">
         <div className="publicGameItem">
@@ -758,22 +780,22 @@ const PublicGameList = (props) => {
       </li>
     );
   });
-  
+
   let gameLists = [];
   let paginationTabs = [];
-  
+
   //Break up the number of returned games into chunks of 10
   for(let i = 0; i < games.length; i += 10){
-    
+
     const numGamesLeft = games.length - i;
     let gameSet;
-    
+
     if(numGamesLeft <= 10){
       gameSet = games.slice(i);
     } else {
       gameSet = games.slice(i, i + 10);
     }
-    
+
     //If it's the first set, make it visible. Otherwise, hide the set
     if(i == 0){
       gameLists.push(
@@ -799,7 +821,7 @@ const PublicGameList = (props) => {
       );
     }
   };
-  
+
   //Build the entire public game list panel, with all game results included
   return (
     <div>
@@ -827,12 +849,14 @@ const PublicGameList = (props) => {
 const PublicResults = (props) => {
   const april13th2018 = '2018-04-13';
   const today = new Date().toISOString().split("T")[0];
-  
+
   return (
     <div className="container">
       <div className="jumbotron">
         <h1 className="display-3">Public Game Results:</h1>
-        <p className="lead">Search for games and watch replays!</p>
+        <p className="lead">Search for games and watch replays!
+        The search criteria limit returned results; so to see every result
+        leave the search criteria empty.</p>
         <hr className="my-4" />
         <form id="publicGameResultsForm" name="publicGameResultsForm"
           onSubmit={handlePublicGameRequest}
@@ -880,7 +904,7 @@ const PublicResults = (props) => {
               <input type="submit" id="getPublicGames" value="Search For Games" className="btn btn-lg btn-primary" />
             </div>
           </fieldset>
-        
+
         </form>
         <hr className="my-4" />
         <h2>Results</h2>
@@ -893,9 +917,9 @@ const PublicResults = (props) => {
 //Build a pop-out modal window to display to the user
 const SiteModal = (props) => {
   const id = "playbackModal";
-  
+
   let modalBody;
-  
+
   if(props.render){
     const dimensions = calcDisplayDimensions();
     const ratio = Math.min(window.innerHeight * 0.5 / dimensions.height, 1);
@@ -913,7 +937,7 @@ const SiteModal = (props) => {
   } else {
     modalBody = <p>Loading playback data... <span className="fas fa-sync fa-spin"></span></p>;
   }
-  
+
   return (
     <div id={id} className="modal show" tabindex="-1" role="dialog">
       <div id="pageMask"></div>
@@ -938,7 +962,7 @@ const SiteModal = (props) => {
 }
 
 const PlaybackOptions = (props) => {
-	
+
   let player1Name;
   let player2Name;
   if(playerProfiles["player1"] && playerProfiles["player2"]){
@@ -948,7 +972,7 @@ const PlaybackOptions = (props) => {
     player1Name = "Player 1";
     player2Name = "Player 2";
   }
-  
+
   if(!isPlayingBack){
     return (
       <div className="container text-center">
@@ -983,7 +1007,7 @@ const PlaybackOptions = (props) => {
         <p className="lead aboutPara">Playback Progress:</p>
         <div className="progress">
           <div className="progress-bar progress-bar-striped progress-bar-animated bg-info"
-            role="progressbar" 
+            role="progressbar"
             aria-value={props.progress}
             aria-valuemin="0"
             aria-valuemax={props.total}
@@ -997,15 +1021,15 @@ const PlaybackOptions = (props) => {
 
 //Render the bypass wait control
 const renderPlaybackOptions = () => {
-	
+
   const modal = document.querySelector("#modalContainer div");
-  
+
   if(!modal){
     return;
   }
-  
+
   ReactDOM.render(
-		<PlaybackOptions 
+		<PlaybackOptions
       progress={playbackSequenceCount - turnSequence.length}
       total={playbackSequenceCount}
     />,
@@ -1022,7 +1046,7 @@ const changePublicGameSet = (e) => {
   const activeGameSet = document.querySelector(`#gameSet${activeLinkId.charAt(activeLinkId.length - 1)}`);
   activeLink.classList.remove("active");
   activeGameSet.classList.add("hidden");
-  
+
   //Active the necessary tab
   const dataSet = e.target.getAttribute("data-set");
   document.querySelector(`#gameLink${dataSet}`).classList.add("active");
@@ -1031,30 +1055,30 @@ const changePublicGameSet = (e) => {
 
 //Request playback data from the server
 const requestPlaybackData = (e) => {
-  
+
   if(inRoom){
     handleError("Cannot request playback while in a game room!");
     return;
   }
-  
+
   const id = e.target.parentElement.querySelector("span").getAttribute('data-id');
-  
+
   //There's really no need to have a delay here- the playback data loads in a few milliseconds,
   //but I didn't want it to immediately pop up with the playback canvas
   //However, for the sake of this submission, I'll reduce it to 10ms instead of 1000ms
   setTimeout(() => {
 	socket.emit('requestPlaybackData', { id });
   }, 10);
-  
+
   renderPlayback(false);
 }
 
 //Change a game's privacy setting
 const changeGamePrivacy = (e) => {
-  
+
   const id = e.target.parentElement.querySelector("span").getAttribute('data-id');
   const privacySetting = e.target.getAttribute('data-private');
-  
+
   getTokenWithCallback((csrfToken) => {
     const data = `id=${id}&privacy_setting=${privacySetting}&_csrf=${csrfToken}`;
     sendAjax('POST', '/changeGamePrivacy', data, () => {
@@ -1075,13 +1099,13 @@ const renderPlayback = (renderDisplay) => {
     <SiteModal render={renderDisplay} />,
     document.querySelector("#modalContainer")
   );
-  
+
   const modal = document.querySelector("#modalContainer div");
-  
+
   if(!modal){
     return;
   }
-  
+
   modal.classList.remove("hide-anim");
   modal.classList.add("show");
 }
@@ -1095,15 +1119,23 @@ const clearLeftPane = () => {
 };
 
 //Make a call to render the public game history
-const renderPublicResults = () => {  
+const renderPublicResults = () => {
   getTokenWithCallback((csrfToken) => {
     ReactDOM.render(
       <PublicResults csrf={csrfToken} />,
       document.querySelector("#main")
     );
   });
-  
+
   clearLeftPane();
+};
+
+//Render the disclaimer window
+const renderDisclaimerWindow = () => {
+  ReactDOM.render(
+    <DisclaimerWindow />,
+    document.querySelector("#main")
+  );
 };
 
 //Handle game results sent from the server
@@ -1129,15 +1161,15 @@ const renderProfile = () => {
       <ProfileWindow csrf={csrfToken} />,
       document.querySelector("#main")
     );
-    
+
     getProfiles();
   });
-  
+
   //Request game history data
   sendAjax('GET', '/getGameHistory', null, (data) => {
     renderGameHistory(data.data);
   });
-  
+
   clearLeftPane();
 };
 
@@ -1149,7 +1181,7 @@ const renderFeedback = () => {
       document.querySelector("#main")
     );
   });
-  
+
   clearLeftPane();
 };
 
@@ -1168,7 +1200,7 @@ const renderInstructions = () => {
     <InstructionsWindow />,
     document.querySelector("#main")
   );
-  
+
   clearLeftPane();
 };
 

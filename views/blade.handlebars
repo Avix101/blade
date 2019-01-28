@@ -3,29 +3,29 @@
 <head>
   <meta charset="utf-8">
   <title>Sen No Kiseki's Blade</title>
-  
+
   <!-- Socket.io script -->
   <script src="/socket.io/socket.io.js"></script>
-  
+
   <!-- React and Proptypes -->
   <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-  
+
   <!-- Additional utilities -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/remarkable/1.6.2/remarkable.min.js"></script>
-  
+
   <!-- Bootstrap, and custom styles -->
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
   <link rel="stylesheet" type="text/css" href="/assets/bootstrap-cerulean.min.css" />
   <link rel="stylesheet" type="text/css" href="/assets/fontawesome-all.min.css" />
   <link rel="stylesheet" type="text/css" href="/assets/mainStyle.css" />
-  
+
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Fira+Sans" rel="stylesheet">
-  
+
 </head>
 <body>
 
@@ -57,6 +57,9 @@
             <a id="feedbackButton" class="nav-link" href="#feedback">Feedback</a>
           </li>
         {{/unless}}
+        <li class="nav-item">
+          <a id="disclaimerButton" class="nav-link" href="#disclaimer">Disclaimer</a>
+        </li>
       </ul>
       <div class="navbar-right">
         <ul class="navbar-nav mr-auto">
@@ -81,14 +84,14 @@
       {{/unless}}
     </div>
   </nav>
-  
+
   <!-- Notification containers -->
   <div id="errorMessage"></div>
   <div id="successMessage"></div>
-  
+
   <!-- Modal Container -->
   <div id="modalContainer" data-target="#playbackModal"></div>
-  
+
   <!-- Containers for React generated content -->
   <div id="appContainer" class="container-fluid moveDown">
     <div class="row row-centered">
@@ -103,10 +106,10 @@
       </div>
     </div>
   </div>
-  
+
   <!-- Images needed for game -->
   <img id="bladeMat" class="hidden" src="/assets/img/blade_mat.png" alt="Blade Mat" />
-  
+
   <!-- Script used to store variables using Handlebars -->
   <script>
     const username = "{{username}}";

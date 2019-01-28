@@ -3,32 +3,32 @@ let profileSelection;
 //Process a request to login to a user's account
 const handleLogin = (e) => {
 	e.preventDefault();
-	
+
 	if($("#user").val() == '' || $("#pass").val() == ''){
 		handleError("Username or password is empty");
 		return false;
 	}
-	
+
 	sendAjax('POST', $("#loginForm").attr("action"), $("#loginForm").serialize(), redirect);
-	
+
 	return false;
 };
 
 //Process a request to login as a guest
 const handleGuestLogin = (e) => {
   e.preventDefault();
-  
+
   sendAjax('GET', $("#guestLoginForm").attr("action"), null, redirect);
-  
+
   return false;
 };
 
 //Process a request to login with reddit
 const handleRedditLogin = (e) => {
   e.preventDefault();
-  
+
   sendAjax('GET', $("#redditLoginForm").attr("action"), null, redirect);
-  
+
   return false;
 };
 
@@ -122,19 +122,19 @@ const createLoginWindow = (csrf) => {
 //Handle a request from a user to sign up for a new account
 const handleSignup = (e) => {
 	e.preventDefault();
-	
+
 	if($("#user").val() == '' || $("#pass").val() == '' || $("#pass2").val() == ''){
 		handleError("All fields are required");
 		return false;
 	}
-	
+
 	if($("#pass").val() !== $("#pass2").val()){
 		handleError("Passwords do not match");
 		return false;
 	}
-	
+
 	sendAjax('POST', $("#signupForm").attr("action"), $("#signupForm").serialize(), redirect);
-	
+
 	return false;
 };
 
@@ -170,6 +170,21 @@ const SignupWindow = (props) => {
               <div className="col-sm-9">
                 <input id="pass2" className="form-control" type="password" name="pass2" placeholder="retype password" />
               </div>
+            </div>
+						<div className="card text-white bg-danger mb-3">
+						  <div className="card-header"><span className="fas fa-exclamation-circle"></span> Warning</div>
+						  <div className="card-body">
+						    <h4 className="card-title">Password Recommendation</h4>
+						    <p className="card-text">Please DO NOT use a password for this site that you use for anything else.
+								Expect that your password could be compromised, even though it's unlikely.</p>
+						  </div>
+						</div>
+						<div className="form-group row">
+              <input id="passWarningAck" className="form-control col-sm-3" type="checkbox" name="pass_warning_ack" />
+              <div className="col-sm-9">
+								<label htmlFor="passWarningAck" className="col-form-label">I understand the above warning about my password and accept
+								that it's my responsibility to keep my valuable passwords safe.</label>
+							</div>
             </div>
             <hr />
             <div className="form-group row vertical-center">
@@ -208,13 +223,13 @@ const createSignupWindow = (csrf) => {
 const setup = (csrf) => {
 	const loginButton = document.querySelector("#loginButton");
 	const signupButton = document.querySelector("#signupButton");
-	
+
 	loginButton.addEventListener("click", (e) => {
 		e.preventDefault();
 		createLoginWindow(csrf);
 		return false;
 	});
-	
+
   //If the user switches contexts, update the shown form
 	signupButton.addEventListener("click", (e) => {
 		e.preventDefault();
@@ -223,7 +238,7 @@ const setup = (csrf) => {
     getProfiles();
 		return false;
 	});
-	
+
 	//Default to login screen initially
 	createLoginWindow(csrf);
 };

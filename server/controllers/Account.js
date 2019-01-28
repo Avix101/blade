@@ -150,6 +150,7 @@ const signup = (request, response) => {
   req.body.pass = `${req.body.pass}`;
   req.body.pass2 = `${req.body.pass2}`;
   req.body.profile_name = `${req.body.profile_name}`;
+  req.body.pass_warning_ack = `${req.body.pass_warning_ack}`;
 
   if (!req.body.username || !req.body.pass || !req.body.pass2) {
     return res.status(400).json({ error: 'All fields are required' });
@@ -161,6 +162,12 @@ const signup = (request, response) => {
 
   if (req.body.pass !== req.body.pass2) {
     return res.status(400).json({ error: 'Passwords do not match' });
+  }
+
+  if (req.body.pass_warning_ack !== 'on') {
+    return res.status(400).json({
+      error: 'You must accept the password acknowledgement to create an account',
+    });
   }
 
   if (!profilePics[req.body.profile_name]) {
