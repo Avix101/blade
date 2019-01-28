@@ -603,7 +603,7 @@ var draw = function draw() {
     drawWaitingOverlay("Press Start to Begin Playback");
   } else if (!inRoom && gameState.turnType !== "end") {
     drawWaitingOverlay("Please create or join a game...");
-  } else if (gameState.turnType === "begin") {
+  } else if (gameState.turnType === "begin" && !isPlayingBack) {
     drawWaitingOverlay("Waiting for an opponent to join...");
   } else {
     drawScore(getPlayerPoints(), getOpponentPoints());
@@ -2877,6 +2877,7 @@ var startPlayback = function startPlayback() {
   var perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
 
   var game = data.game;
+  console.log(gameState);
 
   //Record the total number of actions taken during playback
   playbackSequenceCount = game.gameplay.length;

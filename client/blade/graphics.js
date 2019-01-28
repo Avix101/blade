@@ -288,7 +288,7 @@ const draw = () => {
     drawWaitingOverlay("Press Start to Begin Playback");
   } else if(!inRoom && gameState.turnType !== "end"){
     drawWaitingOverlay("Please create or join a game...");
-  } else if(gameState.turnType === "begin"){
+  } else if(gameState.turnType === "begin" && !isPlayingBack){
     drawWaitingOverlay("Waiting for an opponent to join...");
   } else {
     drawScore(getPlayerPoints(), getOpponentPoints());

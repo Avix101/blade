@@ -250,6 +250,7 @@ const startPlayback = () => {
   const perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
 
   const game = data.game;
+  console.log(gameState);
 
   //Record the total number of actions taken during playback
   playbackSequenceCount = game.gameplay.length;
