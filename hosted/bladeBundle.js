@@ -3966,6 +3966,7 @@ var receivedChatMessage = function receivedChatMessage(data) {
 var addToChat = function addToChat(text) {
   var chatWindow = document.querySelector("#chat");
   chatWindow.value = chatWindow.value + "\n" + text;
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 };
 "use strict";
 

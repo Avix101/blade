@@ -1369,4 +1369,5 @@ const receivedChatMessage = (data) => {
 const addToChat = (text) => {
   const chatWindow = document.querySelector("#chat");
   chatWindow.value = `${chatWindow.value}\n${text}`;
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 };
