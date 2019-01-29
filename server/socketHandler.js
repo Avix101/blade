@@ -295,7 +295,7 @@ const init = (ioInstance) => {
       // Sanity check the chat messages
       const m = `${data.message}`;
 
-      if (m === "") {
+      if (m === '') {
         return;
       }
 
