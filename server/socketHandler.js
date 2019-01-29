@@ -292,8 +292,16 @@ const init = (ioInstance) => {
         return;
       }
 
+      // Sanity check the chat messages
+      const m = `${data.message}`;
+
+      if (m === "") {
+        return;
+      }
+
       const { username } = socket.handshake.session.account;
-      const message = `${username}: ${data.message}`;
+      const message = `${username}: ${m}`;
+
       io.sockets.in(socket.roomJoined).emit('chatMessage', { message });
     });
 
