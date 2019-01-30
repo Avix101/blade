@@ -96,6 +96,9 @@ const sessionObj = session({
   },
 });
 
+//Trust first proxy (Heroku)
+app.set('trust proxy', 1);
+
 app.use(sessionObj);
 
 // Set up view engine
