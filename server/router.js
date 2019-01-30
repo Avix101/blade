@@ -12,7 +12,8 @@ const controllers = require('./controllers');
 const mid = require('./middleware');
 
 // Create rate limiters
-let loginLimiter, createAccountLimiter;
+let loginLimiter;
+let createAccountLimiter;
 
 // Utilize shared redis instance
 const linkMem = (redisClient) => {
@@ -21,10 +22,10 @@ const linkMem = (redisClient) => {
     windowMs: 60 * 60 * 1000, // 1 Hour
     max: 10,
     store: new RedisForRateLimiting({
-      client: redisClient
+      client: redisClient,
     }),
     skipSuccessfulRequests: true,
-    message: {error: "Too many failed login attempts, please try again later"}
+    message: { error: 'Too many failed login attempts, please try again later' },
   });
 
   createAccountLimiter = rateLimiter({
@@ -34,7 +35,7 @@ const linkMem = (redisClient) => {
       client: redisClient,
     }),
     skipFailedRequests: true,
-    message: {error: "Too many accounts created, try again later"}
+    message: { error: 'Too many accounts created, try again later' },
   });
 };
 
@@ -56,10 +57,14 @@ const attach = (app) => {
   app.get('/guestLogin', mid.requiresSecure, mid.requiresLogout, controllers.Account.guestLogin);
   app.get('/redditLogin', mid.requiresSecure, mid.requiresLogout, controllers.Account.redditLogin);
   app.get('/auth/reddit', mid.requiresSecure, mid.requiresLogout, controllers.Account.redditAuth);
-  app.post('/login', mid.requiresSecure, mid.requiresLogout,
-    loginLimiter, controllers.Account.login);
-  app.post('/signup', mid.requiresSecure, mid.requiresLogout,
-    createAccountLimiter, controllers.Account.signup);
+  app.post(
+    '/login', mid.requiresSecure, mid.requiresLogout,
+    loginLimiter, controllers.Account.login,
+  );
+  app.post(
+    '/signup', mid.requiresSecure, mid.requiresLogout,
+    createAccountLimiter, controllers.Account.signup,
+  );
   app.post('/changePassword', mid.requiresNonGuestLogin, controllers.Account.updatePassword);
   app.post('/changeIcon', mid.requiresNonGuestLogin, controllers.Account.updateIcon);
   app.post('/changePrivacy', mid.requiresNonGuestLogin, controllers.Account.updatePrivacy);

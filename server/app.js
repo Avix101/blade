@@ -95,11 +95,11 @@ const sessionObj = session({
     secure: process.env.NODE_ENV !== 'development',
     httpOnly: true,
     sameSite: 'strict',
-    expires: expiryDate
+    expires: expiryDate,
   },
 });
 
-//Trust first proxy (Heroku)
+// Trust first proxy (Heroku)
 app.set('trust proxy', 1);
 
 app.use(sessionObj);
