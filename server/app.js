@@ -74,14 +74,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Cookie expiration date (1 day)
 const expiryDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
 
+// Create Redis client
+const redisClient = new RedisStore({
+  host: redisURL.hostname,
+  port: redisURL.port,
+  pass: redisPASS,
+});
+
+// Link the shared redis instance with the app's router
+router.linkMem(redisClient.client);
+
 // Create a new session object
 const sessionObj = session({
   key: 'sessionid',
-  store: new RedisStore({
-    host: redisURL.hostname,
-    port: redisURL.port,
-    pass: redisPASS,
-  }),
+  store: redisClient,
   secret: redisSecret,
   resave: true,
   saveUninitialized: true,
