@@ -89,9 +89,9 @@ const sessionObj = session({
     secure: process.env.NODE_ENV !== 'development',
     httpOnly: true,
     sameSite: 'strict',
-    domain: process.env.NODE_ENV !== 'development'
-      ? 'blade-game.herokuapp.com' : 'localhost',
-    path: '/',
+    //domain: process.env.NODE_ENV !== 'development'
+    //  ? 'blade-game.herokuapp.com' : 'localhost',
+    //path: '/',
     expires: expiryDate
   },
 });
