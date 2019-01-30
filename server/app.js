@@ -9,6 +9,7 @@ const sharedSession = require('express-socket.io-session');
 const RedisStore = require('connect-redis')(session);
 const url = require('url');
 const csrf = require('csurf');
+const helmet = require('helmet');
 
 // Import express and custom router
 const express = require('express');
@@ -64,8 +65,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Enable helmet protections
+app.use(helmet());
+
 app.use(compression());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Cookie expiration date (1 day)
+const expiryDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
 
 // Create a new session object
 const sessionObj = session({
@@ -79,7 +86,13 @@ const sessionObj = session({
   resave: true,
   saveUninitialized: true,
   cookie: {
+    secure: process.env.NODE_ENV !== 'development',
     httpOnly: true,
+    sameSite: 'strict',
+    domain: process.env.NODE_ENV !== 'development'
+      ? 'herokuapp.com' : 'localhost',
+    path: '/',
+    expires: expiryDate
   },
 });
 
