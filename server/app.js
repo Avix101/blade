@@ -90,7 +90,7 @@ const sessionObj = session({
     httpOnly: true,
     sameSite: 'strict',
     domain: process.env.NODE_ENV !== 'development'
-      ? 'herokuapp.com' : 'localhost',
+      ? 'blade-game.herokuapp.com' : 'localhost',
     path: '/',
     expires: expiryDate
   },
