@@ -232,6 +232,8 @@ const getPublicGames = (request, response) => {
           for (let i = 0; i < games.length; i++) {
             const game = games[i];
 
+            // Privacy check is performed by mongoose model
+            // Alternative is to check here:
             // if(!game.player1Privacy && !game.player2Privacy){
             const gameData = {
               id: game._id,
@@ -244,7 +246,6 @@ const getPublicGames = (request, response) => {
             };
 
             data.push(gameData);
-            // }
           }
 
           return res.status(200).json({ data });
