@@ -155,8 +155,13 @@ const init = (ioInstance) => {
     });
 
     // Handles a request to create a new room
-    socket.on('createRoom', () => {
-      if (roomHandler.createRoom(socket.hash)) {
+    socket.on('createRoom', (data) => {
+
+      if (!verifyDataIntegrity(data, ['roomType'])) {
+        return;
+      }
+
+      if (roomHandler.createRoom(socket.hash, data.roomType)) {
         if (roomHandler.joinRoom(socket.hash, socket)) {
           // Update socket session!!
           socket.handshake.session.reload(() => {
@@ -171,6 +176,11 @@ const init = (ioInstance) => {
 
     // Handles a request to join an existing room
     socket.on('joinRoom', (data) => {
+
+      if (!verifyDataIntegrity(data, ['room'])) {
+        return;
+      }
+
       if (roomHandler.joinRoom(data.room, socket)) {
         socket.emit('roomJoined', { room: data.room, status: roomHandler.getPlayerStatus(data.room, socket) });
         if (roomHandler.getPlayerCount(data.room) === 2) {
@@ -289,6 +299,10 @@ const init = (ioInstance) => {
     // Handle a chat message (send to all players in the room)
     socket.on('chatMessage', (data) => {
       if (!socket.handshake.session.account || !socket.roomJoined) {
+        return;
+      }
+
+      if (!verifyDataIntegrity(data, ['message'])) {
         return;
       }
 

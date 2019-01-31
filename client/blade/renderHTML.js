@@ -246,7 +246,14 @@ const RoomWindow = (props) => {
       >
         <fieldset>
           <div className="form-group text-centered">
-            <button onClick={createRoom} className="btn btn-lg btn-primary">Create New Game</button>
+            <button onClick={createOpenRoom} className="btn btn-lg btn-primary"
+              data-toggle="tooltip" title="Create an open game that will be placed in the public list for anyone to join"
+            >New Open Game <span className="fas fa-bullhorn"></span></button>
+          </div>
+          <div className="form-group text-centered">
+            <button onClick={createClosedRoom} className="btn btn-lg btn-primary"
+              data-toggle="tooltip" title="Create a closed game that can only be joined by someone who knows the room code"
+              >New Closed Game <span className="fas fa-user-secret"></span></button>
           </div>
           <div className="form-group">
             <div className="input-group">

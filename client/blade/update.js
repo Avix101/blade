@@ -461,9 +461,16 @@ const onRoomSelect = (e) => {
   roomId.value = e.target.getAttribute('data-room');
 };
 
-//Request to create a new room
-const createRoom = (e) => {
-  socket.emit('createRoom');
+//Request to create a new open room
+const createOpenRoom = (e) => {
+  socket.emit('createRoom', {roomType: 'open'});
+  addToChat("You have started an open game, please wait for an opponent, or share your room code!");
+};
+
+//Request to create a new closed room
+const createClosedRoom = (e) => {
+  socket.emit('createRoom', {roomType: 'closed'});
+  addToChat("You have started is a closed game, please share your room code with your desired opponent!")
 };
 
 //Request to join an existing room
@@ -515,7 +522,6 @@ const roomJoined = (data) => {
 
   if(data.room){
     addToChat(`You have joined room: ${data.room}`);
-    addToChat(`Please wait for an opponent.`);
   }
 
   const subDeckKeys = Object.keys(deck);

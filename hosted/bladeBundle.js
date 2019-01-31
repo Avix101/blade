@@ -1081,8 +1081,23 @@ var RoomWindow = function RoomWindow(props) {
           { className: "form-group text-centered" },
           React.createElement(
             "button",
-            { onClick: createRoom, className: "btn btn-lg btn-primary" },
-            "Create New Game"
+            { onClick: createOpenRoom, className: "btn btn-lg btn-primary",
+              "data-toggle": "tooltip", title: "Create an open game that will be placed in the public list for anyone to join"
+            },
+            "New Open Game ",
+            React.createElement("span", { className: "fas fa-bullhorn" })
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "form-group text-centered" },
+          React.createElement(
+            "button",
+            { onClick: createClosedRoom, className: "btn btn-lg btn-primary",
+              "data-toggle": "tooltip", title: "Create a closed game that can only be joined by someone who knows the room code"
+            },
+            "New Closed Game ",
+            React.createElement("span", { className: "fas fa-user-secret" })
           )
         ),
         React.createElement(
@@ -3094,9 +3109,16 @@ var onRoomSelect = function onRoomSelect(e) {
   roomId.value = e.target.getAttribute('data-room');
 };
 
-//Request to create a new room
-var createRoom = function createRoom(e) {
-  socket.emit('createRoom');
+//Request to create a new open room
+var createOpenRoom = function createOpenRoom(e) {
+  socket.emit('createRoom', { roomType: 'open' });
+  addToChat("You have started an open game, please wait for an opponent, or share your room code!");
+};
+
+//Request to create a new closed room
+var createClosedRoom = function createClosedRoom(e) {
+  socket.emit('createRoom', { roomType: 'closed' });
+  addToChat("You have started is a closed game, please share your room code with your desired opponent!");
 };
 
 //Request to join an existing room
@@ -3148,7 +3170,6 @@ var roomJoined = function roomJoined(data) {
 
   if (data.room) {
     addToChat("You have joined room: " + data.room);
-    addToChat("Please wait for an opponent.");
   }
 
   var subDeckKeys = Object.keys(deck);

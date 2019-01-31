@@ -10,13 +10,14 @@ const getPlayerCount = (roomId) => {
 };
 
 // Create a new room given an id
-const createRoom = (roomId) => {
+const createRoom = (roomId, type) => {
   if (rooms[roomId]) {
     return false;
   }
 
   rooms[roomId] = {
     id: roomId,
+    type,
     sockets: [],
     owner: 'Anonymous',
     player1: null,
@@ -142,7 +143,17 @@ const getPlayerStatus = (roomId, socket) => {
 // Get data regarding all rooms (allow public facing data only)
 const getRooms = () => {
   const roomKeys = Object.keys(rooms);
-  return roomKeys.map(key => ({ id: key, count: getPlayerCount(key), owner: rooms[key].owner }));
+
+  return roomKeys.reduce((result, key) => {
+    // Only return rooms that are open (publicly available)
+    if (rooms[key].type === "open") {
+      result.push({
+        id: key, count: getPlayerCount(key), owner: rooms[key].owner
+      });
+    }
+
+    return result;
+  }, []);
 };
 
 // Filter all rooms to all available (open) rooms
