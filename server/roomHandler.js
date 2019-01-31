@@ -144,6 +144,7 @@ const getPlayerStatus = (roomId, socket) => {
 const getRooms = () => {
   const roomKeys = Object.keys(rooms);
 
+  // Return all available rooms
   return roomKeys.reduce((result, key) => {
     // Only return rooms that are open (publicly available)
     if (rooms[key].type === "open") {
