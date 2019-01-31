@@ -470,7 +470,7 @@ const createOpenRoom = (e) => {
 //Request to create a new closed room
 const createClosedRoom = (e) => {
   socket.emit('createRoom', {roomType: 'closed'});
-  addToChat("You have started is a closed game, please share your room code with your desired opponent!")
+  addToChat("You have started a closed game, please share your room code with your desired opponent!")
 };
 
 //Request to join an existing room
