@@ -2877,7 +2877,6 @@ var startPlayback = function startPlayback() {
   var perspective = perspectiveSelect.options[perspectiveSelect.selectedIndex].value;
 
   var game = data.game;
-  console.log(gameState);
 
   //Record the total number of actions taken during playback
   playbackSequenceCount = game.gameplay.length;
@@ -2899,7 +2898,8 @@ var startPlayback = function startPlayback() {
   isPlayingBack = true;
   resetOnClose = true;
   turnSequence = game.gameplay;
-  console.log(turnSequence);
+  waiting = false;
+  waitTime = 0;
 };
 
 //Allow the user to bypass realistic wait times for executing playback
@@ -2913,6 +2913,7 @@ var playerDeckCheck = void 0;
 var opponentDeckCheck = void 0;
 var waiting = false;
 var waitTime = 0;
+var waitingFnId = void 0;
 var bypassWait = false;
 var executePlayback = function executePlayback() {
 
@@ -3078,7 +3079,7 @@ var executePlayback = function executePlayback() {
     waitTime = 0;
   }
 
-  setTimeout(function () {
+  waitingFnId = setTimeout(function () {
     action();
     //Allow the action to commence before setting waiting to false
     setTimeout(function () {
@@ -3133,6 +3134,11 @@ var resetGame = function resetGame() {
   gameState.player2Points = 0;
   gameState.winner = null;
   gameState.waiting = false;
+
+  // Reset any functions waiting via a playback
+  clearTimeout(waitingFnId);
+  waiting = false;
+  waitTime = 0;
 };
 
 //When a room is joined, prepare for a new game
