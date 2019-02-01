@@ -68,6 +68,13 @@
               <a id="profileButton" class="nav-link" href="#profile">Profile</a>
             </li>
           {{/unless}}
+          {{#if enableAdminTools}}
+            <li class="nav-item">
+              <a id="adminToolsButton" class="nav-link" href="#admin">
+                Admin Tools <span class="fas fa-key"></span>
+              </a>
+            </li>
+          {{/if}}
           <li class="nav-item navbar-right">
             <a id="logoutButton" class="nav-link" href="/logout">Logout</a>
           </li>

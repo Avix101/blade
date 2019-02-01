@@ -156,7 +156,6 @@ const init = (ioInstance) => {
 
     // Handles a request to create a new room
     socket.on('createRoom', (data) => {
-
       if (!verifyDataIntegrity(data, ['roomType'])) {
         return;
       }
@@ -176,7 +175,6 @@ const init = (ioInstance) => {
 
     // Handles a request to join an existing room
     socket.on('joinRoom', (data) => {
-
       if (!verifyDataIntegrity(data, ['room'])) {
         return;
       }

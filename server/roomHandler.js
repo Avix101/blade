@@ -147,9 +147,9 @@ const getRooms = () => {
   // Return all available rooms
   return roomKeys.reduce((result, key) => {
     // Only return rooms that are open (publicly available)
-    if (rooms[key].type === "open") {
+    if (rooms[key].type === 'open') {
       result.push({
-        id: key, count: getPlayerCount(key), owner: rooms[key].owner
+        id: key, count: getPlayerCount(key), owner: rooms[key].owner,
       });
     }
 
